@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import glob
+import inspect
 import logging
 import os
 import pickle
@@ -7,11 +9,13 @@ import re
 import select
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tarfile
 import time
 import tempfile
+import yaml
 
 import start_vm
 
@@ -31,6 +35,15 @@ backup_prefix = '.ci-backup'
 
 app_log = logging.getLogger("avocado.app")
 
+with open('server_data.yaml', 'r') as yaml_file:
+    yaml_data = yaml.safe_load(yaml_file)
+username = yaml_data['username']
+canonical_server = yaml_data['canonical_server']
+server_port = yaml_data['port']
+canonical_isar_parent_build_dir = \
+    yaml_data['canonical_isar_parent_build_dir']
+
+
 class CanBeFinished(Exception):
     pass
 
@@ -46,18 +59,27 @@ class CIBuilder(Test):
         self._file_handler.setFormatter(formatter)
         app_log.addHandler(self._file_handler)
 
-    def init(self, build_dir='build', isar_dir=isar_root):
+    def init(self, parent_build_dir='build', build_dir=None,
+             isar_dir=isar_root):
         # initialize build_dir and setup environment
         # needs to run once (per test case)
         if hasattr(self, 'build_dir'):
-            self.error("Broken test implementation: init() called multiple times.")
-        self.build_dir = os.path.join(isar_dir, build_dir)
+            self.error("Broken test implementation: init() called multiple \
+times.")
+        self.parent_build_dir = parent_build_dir
+        if not build_dir:
+            caller_name = inspect.currentframe().f_back.f_code.co_name
+            self.build_dir = os.path.join(isar_root, self.parent_build_dir,
+                                          caller_name)
+        else:
+            self.build_dir = os.path.join(isar_root, self.parent_build_dir,
+                                          build_dir)
         os.chdir(isar_dir)
         os.environ["TEMPLATECONF"] = "meta-test/conf"
         path.usable_rw_dir(self.build_dir)
         output = process.getoutput('/bin/bash -c "source isar-init-build-env \
-                                    %s 2>&1 >/dev/null; env"' % self.build_dir)
-        env = dict(((x.split('=', 1) + [''])[:2] \
+                                   %s 2>&1 >/dev/null; env"' % self.build_dir)
+        env = dict(((x.split('=', 1) + [''])[:2]
                     for x in output.splitlines() if x != ''))
         os.environ.update(env)
 
@@ -74,6 +96,16 @@ class CIBuilder(Test):
         if not hasattr(self, 'build_dir'):
             self.error("Broken test implementation: need to call init().")
 
+    def check_path(self):
+        desired_images = os.path.join(isar_root, self.parent_build_dir,
+                                      self.build_dir, 'tmp', 'deploy',
+                                      'images')
+        return bool(os.path.exists(desired_images))
+
+    def sequential(self):
+        seq = self.params.get('seq', default=False)
+        return seq
+
     def configure(self, compat_arch=True, cross=True, debsrc_cache=False,
                   container=False, ccache=False, sstate=False, offline=False,
                   gpg_pub_key=None, wic_deploy_parts=False, dl_dir=None,
@@ -86,16 +118,9 @@ class CIBuilder(Test):
         # get parameters from avocado cmdline
         quiet = bool(int(self.params.get('quiet', default=1)))
 
-        if not sstate:
-            sstate = bool(int(self.params.get('sstate', default=0)))
-
         # set those to "" to not set dir value but use system default
         if dl_dir is None:
-            dl_dir = os.getenv('DL_DIR')
-        if dl_dir is None:
             dl_dir = os.path.join(isar_root, 'downloads')
-        if sstate_dir is None:
-            sstate_dir = os.getenv('SSTATE_DIR')
         if sstate_dir is None:
             sstate_dir = os.path.join(isar_root, 'sstate-cache')
         if ccache_dir is None:
@@ -312,6 +337,71 @@ BBPATH .= ":${LAYERDIR}"\
             return tar.getnames()
         except Exception:
             return []
+
+    def copy_images_general(self):
+        current_ip = socket.gethostbyname(socket.gethostname())
+        if current_ip != canonical_server:
+            build_dir_basename = os.path.basename(self.build_dir)
+            images_src_dir = os.path.join(self.build_dir, 'tmp', 'deploy',
+                                                                 'images')
+            images_dest_dir = os.path.join(canonical_isar_parent_build_dir,
+                                           build_dir_basename, 'tmp', 'deploy')
+            subprocess.run(
+                f'rsync -az --mkpath -e "ssh -p {server_port}" '
+                f'{images_src_dir} '
+                f'{username}@{canonical_server}:{images_dest_dir}',
+                check=True, shell=True
+            )
+
+    def copy_images_for_run(self, name_of_build_dir, arch='arm',
+                            distro='bullseye', image='isar-image-ci'):
+        current_ip = socket.gethostbyname(socket.gethostname())
+        images_dest_dir = os.path.join(self.build_dir, 'tmp', 'deploy',
+                                       'images', f'qemu{arch}')
+        path_pattern = os.path.join(isar_root, self.parent_build_dir,
+                                    name_of_build_dir, 'tmp', 'deploy',
+                                    'images', f'qemu{arch}',
+                                    f'*{image}*{distro}*{arch}*')
+        matching_files = glob.glob(path_pattern)
+        if current_ip == canonical_server or matching_files:
+            images_src_dir = os.path.join(os.path.dirname(self.build_dir),
+                                          name_of_build_dir, 'tmp', 'deploy',
+                                          'images', f'qemu{arch}')
+            subprocess.run(
+                f'find {images_src_dir} -type f '
+                f'-name "*{image}*{distro}*{arch}*" '
+                f'-exec rsync -az --mkpath {{}} {images_dest_dir}/ \\;',
+                check=True, shell=True
+            )
+        else:
+            images_src_dir = os.path.join(canonical_isar_parent_build_dir,
+                                          name_of_build_dir, 'tmp',
+                                          'deploy', 'images', f'qemu{arch}')
+            ssh_command = (
+                f'ssh -p {server_port} {username}@{canonical_server} '
+                f'find {images_src_dir} -type f '
+                f'-name "*{image}*{distro}*{arch}*"'
+            )
+            ssh_process = subprocess.run(ssh_command, shell=True,
+                                         stdout=subprocess.PIPE,
+                                         text=True, check=True)
+            file_list = ssh_process.stdout.splitlines()
+            for images_src_path in file_list:
+                image_name = os.path.basename(images_src_path)
+                rsync_command = (
+                    f'rsync -az --mkpath -e "ssh -p {server_port}" '
+                    f'{username}@{canonical_server}:{images_src_path} '
+                    f'{images_dest_dir}/{image_name}'
+                )
+                subprocess.run(rsync_command, check=True, shell=True)
+
+    def delete_temp_images(self):
+        current_ip = socket.gethostbyname(socket.gethostname())
+        if current_ip == canonical_server:
+            if os.path.exists(os.path.join(self.build_dir, 'tmp', 'deploy'))\
+                and not os.path.exists(os.path.join(self.build_dir, 'tmp',
+                                                    'work')):
+                shutil.rmtree(os.path.join(self.build_dir, 'tmp', 'deploy'))
 
     def get_ssh_cmd_prefix(self, user, host, port, priv_key):
         cmd_prefix = 'ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no '\
@@ -550,7 +640,6 @@ BBPATH .= ":${LAYERDIR}"\
         f = open(self.vm_dict_file, "wb")
         pickle.dump(self.vm_dict, f)
         f.close()
-
 
     def vm_turn_off(self, vm):
         pid = self.vm_dict[vm][0]

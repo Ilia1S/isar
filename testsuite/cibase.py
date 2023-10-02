@@ -148,6 +148,13 @@ class CIBaseTest(CIBuilder):
 
         self.configure(sstate=True, sstate_dir="", **kwargs)
 
+        # Cleanup sstate and tmp before test
+        self.delete_from_build_dir('sstate-cache')
+        self.delete_from_build_dir('tmp')
+
+        # Populate cache
+        self.bitbake(image_target, **kwargs)
+
         # Check signature files for cachability issues like absolute paths in signatures
         result = process.run(f'{isar_root}/scripts/isar-sstate lint {self.build_dir}/sstate-cache '
                              f'--build-dir {self.build_dir} --sources-dir {isar_root}')
@@ -163,7 +170,7 @@ class CIBaseTest(CIBuilder):
         if not all([
                 check_executed_tasks('isar-bootstrap-target',
                     ['do_bootstrap_setscene', '!do_bootstrap']),
-                check_executed_tasks('sbuild-chroot-target',
+                check_executed_tasks('buildchroot-target',
                     ['do_rootfs_install_setscene', '!do_rootfs_install']),
                 check_executed_tasks('isar-image-base-*',
                     ['do_rootfs_install_setscene', '!do_rootfs_install'])
@@ -187,8 +194,8 @@ class CIBaseTest(CIBuilder):
         if not all([
                 check_executed_tasks('isar-bootstrap-target',
                     ['do_bootstrap_setscene']),
-                check_executed_tasks('sbuild-chroot-target',
-                    ['!do_sbuildchroot_deploy']),
+                check_executed_tasks('buildchroot-target',
+                    ['!do_buildchroot_deploy']),
                 check_executed_tasks('hello',
                     ['do_dpkg_build_setscene', 'do_deploy_deb', '!do_dpkg_build'])
             ]):
@@ -201,7 +208,7 @@ class CIBaseTest(CIBuilder):
         if not all([
                 check_executed_tasks('isar-bootstrap-target',
                     ['do_bootstrap_setscene', '!do_bootstrap']),
-                check_executed_tasks('sbuild-chroot-target',
+                check_executed_tasks('buildchroot-target',
                     ['do_rootfs_install_setscene', '!do_rootfs_install']),
                 check_executed_tasks('hello',
                     ['do_fetch', 'do_dpkg_build']),

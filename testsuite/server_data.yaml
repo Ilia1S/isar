@@ -1,0 +1,8 @@
+---
+username: iskochilov
+canonical_server: 192.168.178.82
+port: 29
+redis_server: 192.168.178.82
+redis_port: 6379
+canonical_isar_parent_build_dir: >-
+  /home/iskochilov/isar/build
