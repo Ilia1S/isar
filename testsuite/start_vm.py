@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 #
 # Helper script to start QEMU with Isar image
-# Copyright (c) 2019, ilbers GmbH
+# Copyright (c) 2019-2024, ilbers GmbH
 
-import argparse
 import os
 import socket
 import subprocess
@@ -97,16 +96,3 @@ def start_qemu(arch, build, distro, image, out, pid, enforce_pcbios):
 
     print(cmdline)
     p1 = subprocess.call('exec ' + ' '.join(cmdline), shell=True)
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--arch', choices=['arm', 'arm64', 'amd64', 'i386', 'mipsel'], help='set isar machine architecture.', default='arm')
-    parser.add_argument('-b', '--build', help='set path to build directory.', default=os.getcwd())
-    parser.add_argument('-d', '--distro', choices=['buster', 'bullseye', 'bookworm', 'trixie', 'focal', 'jammy'], help='set isar Debian distribution.', default='bookworm')
-    parser.add_argument('-i', '--image', help='set image name.', default='isar-image-base')
-    parser.add_argument('-o', '--out', help='Route QEMU console output to specified file.')
-    parser.add_argument('-p', '--pid', help='Store QEMU pid to specified file.')
-    parser.add_argument('--pcbios', action="store_true", help='remove any bios options to enforce use of pc bios')
-    args = parser.parse_args()
-
-    start_qemu(args.arch, args.build, args.distro, args.image, args.out, args.pid, args.pcbios)
