@@ -21,7 +21,8 @@ def get_bitbake_var(output, var):
             ret = line.split('"')[1]
     return ret
 
-def format_qemu_cmdline(arch, build, distro, image, out, pid, enforce_pcbios=False):
+def format_qemu_cmdline(arch, build, distro, image, out, pid,
+                        enforce_pcbios=False, secureboot=False):
     bb_output = get_bitbake_env(arch, distro, image).decode()
 
     extra_args = ''
@@ -66,6 +67,10 @@ def format_qemu_cmdline(arch, build, distro, image, out, pid, enforce_pcbios=Fal
         extra_args.extend(['-pidfile', pid])
 
     qemu_disk_args = qemu_disk_args.replace('##ROOTFS_IMAGE##', deploy_dir_image + '/' + rootfs_image).split()
+
+    if secureboot:
+        qemu_disk_args.extend(['-drive', 'if=pflash,format=raw,unit=1,file="/usr/share/OVMF/OVMF_VARS_4M.ms.fd"'])
+
     if enforce_pcbios and '-bios' in qemu_disk_args:
         bios_idx = qemu_disk_args.index('-bios')
         del qemu_disk_args[bios_idx : bios_idx+2]
@@ -90,9 +95,10 @@ def format_qemu_cmdline(arch, build, distro, image, out, pid, enforce_pcbios=Fal
 
     return cmd
 
-def start_qemu(arch, build, distro, image, out, pid, enforce_pcbios):
-    cmdline = format_qemu_cmdline(arch, build, distro, image, out, pid, enforce_pcbios)
+def start_qemu(arch, build, distro, image, out, pid, enforce_pcbios,
+               secureboot):
+    cmdline = format_qemu_cmdline(arch, build, distro, image, out, pid,
+                                  enforce_pcbios, secureboot)
     cmdline.insert(1, '-nographic')
-
     print(cmdline)
     p1 = subprocess.call('exec ' + ' '.join(cmdline), shell=True)
