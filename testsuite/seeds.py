@@ -21,7 +21,8 @@ r = redis.Redis(
 )
 
 p = r.pubsub()
-p.subscribe('test_dev_arm32_av', 'test_dev_arm64_av', 'test_dev_rebuild_av')
+p.subscribe('test_dev_arm32_av', 'test_dev_arm64_av', 'test_dev_rebuild_av',
+            'test_crossb_av')
 
 
 class Seeds(Test):

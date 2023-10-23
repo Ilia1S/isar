@@ -13,8 +13,8 @@ import socket
 import subprocess
 import sys
 import tarfile
-import time
 import tempfile
+import time
 import yaml
 
 import start_vm
@@ -247,7 +247,7 @@ times.")
                         app_log.error(p1.stderr.readline().rstrip())
             p1.wait()
             if p1.returncode:
-                self.fail('Bitbake failed')
+                self.fail(f'Bitbake failed')
 
     def backupfile(self, path):
         self.check_init()
@@ -409,7 +409,6 @@ BBPATH .= ":${LAYERDIR}"\
                      % (port, priv_key, user, host)
 
         return cmd_prefix
-
 
     def exec_cmd(self, cmd, cmd_prefix):
         proc = subprocess.run('exec ' + str(cmd_prefix) + ' "' + str(cmd) + '"', shell=True,
@@ -640,6 +639,7 @@ BBPATH .= ":${LAYERDIR}"\
         f = open(self.vm_dict_file, "wb")
         pickle.dump(self.vm_dict, f)
         f.close()
+
 
     def vm_turn_off(self, vm):
         pid = self.vm_dict[vm][0]

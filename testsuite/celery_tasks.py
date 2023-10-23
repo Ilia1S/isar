@@ -43,3 +43,87 @@ citest.py:DevTest.test_dev_run_arm64_bullseye', check=True, shell=True)
 def dev_run_arm_bullseye_cel():
     subprocess.run('avocado run \
 citest.py:DevTest.test_dev_run_arm_bullseye', check=True, shell=True)
+
+
+@app.task
+def crossb_cel():
+    subprocess.run('avocado run \
+citest.py:CrossTest.test_crossb', check=True, shell=True)
+
+
+@app.task
+def cross_rpi_cel():
+    subprocess.run('avocado run \
+citest.py:CrossTest.test_cross_rpi', check=True, shell=True)
+
+
+@app.task
+def container_image_cel():
+    subprocess.run('avocado run \
+citest.py:ContainerImageTest.test_container_image', check=True, shell=True)
+
+
+@app.task
+def container_sdk_cel():
+    subprocess.run('avocado run \
+citest.py:ContainerSdkTest.test_container_sdk', check=True, shell=True)
+
+
+@app.task
+def arm_bullseye_fast_cel():
+    subprocess.run('avocado run \
+citest.py:VmBootTestFast.test_arm_bullseye_fast', check=True, shell=True)
+
+
+@app.task
+def arm_bullseye_example_module_cel():
+    subprocess.run('avocado run \
+citest.py:VmBootTestFast.test_arm_bullseye_example_module',
+                   check=True, shell=True)
+
+
+@app.task
+def arm_bullseye_getty_target_cel():
+    subprocess.run('avocado run \
+                   citest.py:VmBootTestFast.test_arm_bullseye_getty_target',
+                   check=True, shell=True)
+
+
+@app.task
+def arm_buster_fast_cel():
+    subprocess.run('avocado run \
+citest.py:VmBootTestFast.test_arm_buster_fast', check=True, shell=True)
+
+
+@app.task
+def arm_buster_getty_target_fast_cel():
+    subprocess.run('avocado run \
+citest.py:VmBootTestFast.test_arm_buster_getty_target',
+                   check=True, shell=True)
+
+
+@app.task
+def arm_buster_example_module_fast_cel():
+    subprocess.run('avocado run \
+citest.py:VmBootTestFast.test_arm_buster_example_module',
+                   check=True, shell=True)
+
+
+@app.task
+def arm_bookworm_fast_cel():
+    subprocess.run('avocado run \
+citest.py:VmBootTestFast.test_arm_bookworm_fast', check=True, shell=True)
+
+
+@app.task
+def arm_bookworm_example_module_cel():
+    subprocess.run('avocado run \
+citest.py:VmBootTestFast.test_arm_bookworm_example_module',
+                   check=True, shell=True)
+
+
+@app.task
+def arm_bookworm_getty_target_cel():
+    subprocess.run('avocado run \
+citest.py:VmBootTestFast.test_arm_bookworm_getty_target',
+                   check=True, shell=True)

@@ -135,7 +135,7 @@ class CrossTest(CIBaseTest):
 
     :avocado: tags=cross,fast,full
     """
-    def test_cross(self):
+    def test_crossb(self):
         targets = [
             'mc:qemuarm-buster:isar-image-ci',
             'mc:qemuarm-bullseye:isar-image-ci',
@@ -144,10 +144,14 @@ class CrossTest(CIBaseTest):
             'mc:qemuarm-bookworm:isar-image-ci',
             'mc:qemuarm64-bookworm:isar-image-ci',
             'mc:qemuarm64-focal:isar-image-base',
+            'mc:nanopi-neo-efi-bookworm:isar-image-base',
                   ]
 
         self.init()
+        self.delete_temp_images()
         self.perform_build_test(targets, debsrc_cache=True)
+        if not self.sequential():
+            self.copy_images_general()
 
     def test_cross_rpi(self):
         targets = [
@@ -159,6 +163,7 @@ class CrossTest(CIBaseTest):
             self.perform_build_test(targets, debsrc_cache=True)
         except:
             self.cancel('KFAIL')
+
 
 class WicTest(CIBaseTest):
 
@@ -179,7 +184,10 @@ class WicTest(CIBaseTest):
         targets = ['mc:qemuarm64-bookworm:isar-image-ci']
 
         self.init()
-        # reuse artifacts
+        # reuse artifelf.init()
+        self.copy_images_for_run('test_dev_arm64')
+        self.vm_start('arm64', 'bullseye', stop_vm=True)
+
         self.perform_wic_partition_test(targets,
             wic_deploy_parts=True, debsrc_cache=True, compat_arch=False)
 
@@ -301,6 +309,7 @@ class SstateTest(CIBaseTest):
         self.init('build-sstate')
         self.perform_sstate_test(image_target, package_target)
 
+
 class SingleTest(CIBaseTest):
 
     """
@@ -339,6 +348,7 @@ class SourceTest(CIBaseTest):
         self.init()
         self.perform_source_test(targets)
 
+
 class VmBootTestFast(CIBaseTest):
 
     """
@@ -347,48 +357,86 @@ class VmBootTestFast(CIBaseTest):
     :avocado: tags=startvm,fast
     """
 
-    def test_arm_bullseye(self):
+    def test_arm_bullseye_fast(self):
         self.init()
-        self.vm_start('arm','bullseye', image='isar-image-ci', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_crossb')
+        if self.sequential():
+            self.vm_start('arm', 'bullseye', image='isar-image-ci', keep=True)
+        else:
+            self.vm_start('arm', 'bullseye', image='isar-image-ci')
 
     def test_arm_bullseye_example_module(self):
         self.init()
-        self.vm_start('arm','bullseye', image='isar-image-ci',
-                      cmd='lsmod | grep example_module', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_crossb')
+        if self.sequential():
+            self.vm_start('arm', 'bullseye', image='isar-image-ci',
+                          cmd='lsmod | grep example_module', keep=True)
+        else:
+            self.vm_start('arm', 'bullseye', image='isar-image-ci',
+                          cmd='lsmod | grep example_module')
 
     def test_arm_bullseye_getty_target(self):
         self.init()
-        self.vm_start('arm','bullseye', image='isar-image-ci',
+        if not self.check_path():
+            self.copy_images_for_run('test_crossb')
+        self.vm_start('arm', 'bullseye', image='isar-image-ci',
                       script='test_systemd_unit.sh getty.target 10')
 
-
-    def test_arm_buster(self):
+    def test_arm_buster_fast(self):
         self.init()
-        self.vm_start('arm','buster', image='isar-image-ci', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_crossb', distro='buster')
+        if self.sequential():
+            self.vm_start('arm', 'buster', image='isar-image-ci', keep=True)
+        else:
+            self.vm_start('arm', 'buster', image='isar-image-ci')
 
-    def test_arm_buster_getty_target(self):
-        self.init()
-        self.vm_start('arm','buster', image='isar-image-ci',
-                      cmd='systemctl is-active getty.target', keep=True)
 
-    def test_arm_buster_example_module(self):
+    def test_arm_buster_getty_target_fast(self):
         self.init()
-        self.vm_start('arm','buster', image='isar-image-ci',
+        if not self.check_path():
+            self.copy_images_for_run('test_crossb', distro='buster')
+        if self.sequential():
+            self.vm_start('arm', 'buster', image='isar-image-ci',
+                          cmd='systemctl is-active getty.target', keep=True)
+        else:
+            self.vm_start('arm', 'buster', image='isar-image-ci',
+                          cmd='systemctl is-active getty.target')
+
+    def test_arm_buster_example_module_fast(self):
+        self.init()
+        if not self.check_path():
+            self.copy_images_for_run('test_crossb', distro='buster')
+        self.vm_start('arm', 'buster', image='isar-image-ci',
                       script='test_kernel_module.sh example_module')
 
-
-    def test_arm_bookworm(self):
+    def test_arm_bookworm_fast(self):
         self.init()
-        self.vm_start('arm','bookworm', image='isar-image-ci', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_crossb', distro='bookworm')
+        if self.sequential():
+            self.vm_start('arm', 'bookworm', image='isar-image-ci', keep=True)
+        else:
+            self.vm_start('arm', 'bookworm', image='isar-image-ci')
 
     def test_arm_bookworm_example_module(self):
         self.init()
-        self.vm_start('arm','bookworm', image='isar-image-ci',
-                      cmd='lsmod | grep example_module', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_crossb', distro='bookworm')
+        if self.sequential():
+            self.vm_start('arm', 'bookworm', image='isar-image-ci',
+                          cmd='lsmod | grep example_module', keep=True)
+        else:
+            self.vm_start('arm', 'bookworm', image='isar-image-ci',
+                          cmd='lsmod | grep example_module')
 
     def test_arm_bookworm_getty_target(self):
         self.init()
-        self.vm_start('arm','bookworm', image='isar-image-ci',
+        if not self.check_path():
+            self.copy_images_for_run('test_crossb', distro='bookworm')
+        self.vm_start('arm', 'bookworm', image='isar-image-ci',
                       script='test_systemd_unit.sh getty.target 10')
 
 
@@ -404,7 +452,6 @@ class VmBootTestFull(CIBaseTest):
         self.init()
         self.vm_start('arm','bullseye')
 
-
     def test_arm_buster(self):
         self.init()
         self.vm_start('arm','buster', image='isar-image-ci', keep=True)
@@ -418,7 +465,6 @@ class VmBootTestFull(CIBaseTest):
         self.init()
         self.vm_start('arm','buster', image='isar-image-ci',
                       script='test_systemd_unit.sh getty.target 10')
-
 
     def test_arm64_bullseye(self):
         self.init()
@@ -434,11 +480,9 @@ class VmBootTestFull(CIBaseTest):
         self.vm_start('arm64','bullseye', image='isar-image-ci',
                       script='test_kernel_module.sh example_module')
 
-
     def test_i386_buster(self):
         self.init()
         self.vm_start('i386','buster')
-
 
     def test_amd64_buster(self):
         self.init()
@@ -446,7 +490,6 @@ class VmBootTestFull(CIBaseTest):
         self.vm_start('amd64','buster', image='isar-image-ci')
         # test pcbios boot
         self.vm_start('amd64', 'buster', True, image='isar-image-ci')
-
 
     def test_amd64_focal(self):
         self.init()
@@ -462,16 +505,13 @@ class VmBootTestFull(CIBaseTest):
         self.vm_start('amd64','focal', image='isar-image-ci',
                       script='test_systemd_unit.sh getty.target 10')
 
-
     def test_amd64_bookworm(self):
         self.init()
         self.vm_start('amd64', 'bookworm', image='isar-image-ci')
 
-
     def test_arm_bookworm(self):
         self.init()
         self.vm_start('arm','bookworm', image='isar-image-ci')
-
 
     def test_i386_bookworm(self):
         self.init()
