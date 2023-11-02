@@ -109,10 +109,10 @@ class CIBaseTest(CIBuilder):
     def perform_sstate_populate(self, image_target, **kwargs):
         # Use a different isar root for populating sstate cache
         isar_sstate = f"{isar_root}/isar-sstate"
-        os.makedirs(isar_sstate)
+        os.makedirs(isar_sstate, exist_ok=True)
         process.run(f'git --work-tree={isar_sstate} checkout HEAD -- .')
 
-        self.init('../build-sstate', isar_dir=isar_sstate)
+        self.init(build_dir='build-sstate', isar_dir=isar_sstate)
         self.configure(sstate=True, sstate_dir="", **kwargs)
 
         # Cleanup sstate and tmp before test

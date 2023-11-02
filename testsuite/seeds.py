@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import inspect
+import os
 import time
 import yaml
 
@@ -8,7 +9,9 @@ import redis
 
 from avocado import Test
 
-with open('server_data.yaml', 'r') as yaml_file:
+
+yaml_dir = os.path.dirname(os.path.abspath(__file__))
+with open(f'{yaml_dir}/server_data.yaml', 'r') as yaml_file:
     yaml_data = yaml.safe_load(yaml_file)
     redis_server = yaml_data['redis_server']
     redis_port = yaml_data['redis_port']
@@ -22,7 +25,8 @@ r = redis.Redis(
 
 p = r.pubsub()
 p.subscribe('test_dev_arm32_av', 'test_dev_arm64_av', 'test_dev_rebuild_av',
-            'test_crossb_av')
+            'test_crossb_av', 'test_nocrosss_av', 'test_sstate_populate_av',
+            'test_wic_nodeploy_partitions_av')
 
 
 class Seeds(Test):

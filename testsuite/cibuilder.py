@@ -6,6 +6,7 @@ import logging
 import os
 import pickle
 import re
+import redis
 import select
 import shutil
 import signal
@@ -35,13 +36,27 @@ backup_prefix = '.ci-backup'
 
 app_log = logging.getLogger("avocado.app")
 
-with open('server_data.yaml', 'r') as yaml_file:
+yaml_dir = os.path.dirname(os.path.abspath(__file__))
+with open(f'{yaml_dir}/server_data.yaml', 'r') as yaml_file:
     yaml_data = yaml.safe_load(yaml_file)
 username = yaml_data['username']
 canonical_server = yaml_data['canonical_server']
 server_port = yaml_data['port']
+ssh_key_path = yaml_data['ssh_key_path']
 canonical_isar_parent_build_dir = \
     yaml_data['canonical_isar_parent_build_dir']
+redis_server = yaml_data['redis_server']
+redis_port = yaml_data['redis_port']
+
+r = redis.Redis(
+    host=redis_server,
+    port=redis_port,
+    db=0,
+    decode_responses=True
+)
+
+p = r.pubsub()
+p.subscribe('wic')
 
 
 class CanBeFinished(Exception):
@@ -64,8 +79,7 @@ class CIBuilder(Test):
         # initialize build_dir and setup environment
         # needs to run once (per test case)
         if hasattr(self, 'build_dir'):
-            self.error("Broken test implementation: init() called multiple \
-times.")
+            self.error("Broken test implementation: init() called multiple times.")
         self.parent_build_dir = parent_build_dir
         if not build_dir:
             caller_name = inspect.currentframe().f_back.f_code.co_name
@@ -118,9 +132,16 @@ times.")
         # get parameters from avocado cmdline
         quiet = bool(int(self.params.get('quiet', default=1)))
 
+        if not sstate:
+            sstate = bool(int(self.params.get('sstate', default=0)))
+
         # set those to "" to not set dir value but use system default
         if dl_dir is None:
+            dl_dir = os.getenv('DL_DIR')
+        if dl_dir is None:
             dl_dir = os.path.join(isar_root, 'downloads')
+        if sstate_dir is None:
+            sstate_dir = os.getenv('SSTATE_DIR')
         if sstate_dir is None:
             sstate_dir = os.path.join(isar_root, 'sstate-cache')
         if ccache_dir is None:
@@ -211,7 +232,11 @@ times.")
     def move_in_build_dir(self, src, dst):
         self.check_init()
         if os.path.exists(self.build_dir + '/' + src):
-            shutil.move(self.build_dir + '/' + src, self.build_dir + '/' + dst)
+            destination = self.build_dir + '/' + dst
+            if os.path.isdir(destination):
+                subprocess.run(f'sudo rm -rf {destination}', check=True,
+                               shell=True)
+            shutil.move(self.build_dir + '/' + src, destination)
 
     def bitbake(self, target, bitbake_cmd=None, **kwargs):
         self.check_init()
@@ -247,7 +272,7 @@ times.")
                         app_log.error(p1.stderr.readline().rstrip())
             p1.wait()
             if p1.returncode:
-                self.fail(f'Bitbake failed')
+                self.fail('Bitbake failed')
 
     def backupfile(self, path):
         self.check_init()
@@ -338,35 +363,61 @@ BBPATH .= ":${LAYERDIR}"\
         except Exception:
             return []
 
-    def copy_images_general(self):
+    def copy_build_dir(self):
         current_ip = socket.gethostbyname(socket.gethostname())
         if current_ip != canonical_server:
-            build_dir_basename = os.path.basename(self.build_dir)
-            images_src_dir = os.path.join(self.build_dir, 'tmp', 'deploy',
-                                                                 'images')
-            images_dest_dir = os.path.join(canonical_isar_parent_build_dir,
-                                           build_dir_basename, 'tmp', 'deploy')
-            subprocess.run(
-                f'rsync -az --mkpath -e "ssh -p {server_port}" '
-                f'{images_src_dir} '
-                f'{username}@{canonical_server}:{images_dest_dir}',
-                check=True, shell=True
-            )
+            try:
+                subprocess.run(
+                    f'sudo -E rsync -az -e "ssh -p {server_port} '
+                    f'-i {ssh_key_path} '
+                    f'-o StrictHostKeyChecking=no" {self.build_dir} '
+                    f'{username}@{canonical_server}:'
+                    f'{canonical_isar_parent_build_dir}/', check=True,
+                    shell=True
+                )
+            except subprocess.CalledProcessError as e:
+                if e.returncode == 24: # it prevents from errors when copying some dirs like /proc
+                    pass
+
+    def publish_queue(self, channel):
+        current_ip = socket.gethostbyname(socket.gethostname())
+        r.publish(channel, current_ip)
+
+    def define_upstream_test_server(self, channel):
+        def copy_build_dir():
+            try:
+                subprocess.run(
+                    f'sudo -E rsync -az -e "ssh -p {server_port} '
+                    f'-i {ssh_key_path} '
+                    f'-o StrictHostKeyChecking=no" {username}@{canonical_server}'
+                    f':{canonical_isar_parent_build_dir}/{self.build_dir} '
+                    f'../{self.parent_build_dir}/', check=True, shell=True
+                )
+            except subprocess.CalledProcessError as e:
+                if e.returncode == 24:
+                    pass
+
+        current_ip = socket.gethostbyname(socket.gethostname())
+        nodeploy_server = p.get_message()
+        if nodeploy_server and nodeploy_server['channel'] == channel:
+            if nodeploy_server['data'] != current_ip and \
+                current_ip != canonical_server:
+                copy_build_dir()
 
     def copy_images_for_run(self, name_of_build_dir, arch='arm',
                             distro='bullseye', image='isar-image-ci'):
         current_ip = socket.gethostbyname(socket.gethostname())
         images_dest_dir = os.path.join(self.build_dir, 'tmp', 'deploy',
                                        'images', f'qemu{arch}')
-        path_pattern = os.path.join(isar_root, self.parent_build_dir,
-                                    name_of_build_dir, 'tmp', 'deploy',
-                                    'images', f'qemu{arch}',
-                                    f'*{image}*{distro}*{arch}*')
+        path_pattern = os.path.join(
+            isar_root, self.parent_build_dir, name_of_build_dir, 'tmp',
+            'deploy', 'images', f'qemu{arch}', f'*{image}*{distro}*{arch}*')
         matching_files = glob.glob(path_pattern)
+
         if current_ip == canonical_server or matching_files:
-            images_src_dir = os.path.join(os.path.dirname(self.build_dir),
-                                          name_of_build_dir, 'tmp', 'deploy',
-                                          'images', f'qemu{arch}')
+            images_src_dir = os.path.join(
+                os.path.dirname(self.build_dir), name_of_build_dir, 'tmp',
+                'deploy', 'images', f'qemu{arch}')
             subprocess.run(
                 f'find {images_src_dir} -type f '
                 f'-name "*{image}*{distro}*{arch}*" '
@@ -389,19 +440,12 @@ BBPATH .= ":${LAYERDIR}"\
             for images_src_path in file_list:
                 image_name = os.path.basename(images_src_path)
                 rsync_command = (
-                    f'rsync -az --mkpath -e "ssh -p {server_port}" '
+                    f'rsync -az --mkpath -e "ssh -p {server_port} '
+                    f'-o StrictHostKeyChecking=no" ' 
                     f'{username}@{canonical_server}:{images_src_path} '
                     f'{images_dest_dir}/{image_name}'
                 )
                 subprocess.run(rsync_command, check=True, shell=True)
-
-    def delete_temp_images(self):
-        current_ip = socket.gethostbyname(socket.gethostname())
-        if current_ip == canonical_server:
-            if os.path.exists(os.path.join(self.build_dir, 'tmp', 'deploy'))\
-                and not os.path.exists(os.path.join(self.build_dir, 'tmp',
-                                                    'work')):
-                shutil.rmtree(os.path.join(self.build_dir, 'tmp', 'deploy'))
 
     def get_ssh_cmd_prefix(self, user, host, port, priv_key):
         cmd_prefix = 'ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no '\
@@ -409,6 +453,7 @@ BBPATH .= ":${LAYERDIR}"\
                      % (port, priv_key, user, host)
 
         return cmd_prefix
+
 
     def exec_cmd(self, cmd, cmd_prefix):
         proc = subprocess.run('exec ' + str(cmd_prefix) + ' "' + str(cmd) + '"', shell=True,

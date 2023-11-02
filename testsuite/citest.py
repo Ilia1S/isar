@@ -30,27 +30,21 @@ class DevTest(CIBaseTest):
         targets = ['mc:qemuarm-bullseye:isar-image-base',
                    'mc:qemuarm-bullseye:isar-image-base:do_populate_sdk']
         self.init()
-        self.delete_temp_images()
         self.perform_build_test(targets, image_install="example-raw")
         if not self.sequential():
-            self.copy_images_general()
+            self.copy_build_dir()
 
     def test_dev_arm64(self):
         targets = ['mc:qemuarm64-bullseye:isar-image-base']
         self.init()
-        self.delete_temp_images()
         self.perform_build_test(targets)
         if not self.sequential():
-            self.copy_images_general()
+            self.copy_build_dir()
 
     def test_dev_rebuild(self):
         targets = ['mc:qemuamd64-bullseye:isar-image-ci']
         self.init()
-        self.delete_temp_images()
         self.perform_build_test(targets)
-        if not self.sequential():
-            self.copy_images_general()
-
         layerdir_core = self.getVars('LAYERDIR_core')
 
         dpkgbase_file = layerdir_core + '/classes/dpkg-base.bbclass'
@@ -58,17 +52,21 @@ class DevTest(CIBaseTest):
         self.backupfile(dpkgbase_file)
         with open(dpkgbase_file, 'a') as file:
             file.write('do_fetch:append() {\n\n}')
-
         try:
             self.perform_build_test(targets)
         finally:
             self.restorefile(dpkgbase_file)
+
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_dev_run_amd64_bullseye(self):
         self.init()
         if not self.check_path():
             self.copy_images_for_run('test_dev_rebuild', arch='amd64')
         self.vm_start('amd64', 'bullseye', image='isar-image-ci')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_dev_run_arm64_bullseye(self):
         self.init()
@@ -76,12 +74,16 @@ class DevTest(CIBaseTest):
             self.copy_images_for_run('test_dev_arm64', arch='arm64',
                                      image='isar-image-base')
         self.vm_start('arm64', 'bullseye')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_dev_run_arm_bullseye(self):
         self.init()
         if not self.check_path():
             self.copy_images_for_run('test_dev_arm32', image='isar-image-base')
         self.vm_start('arm', 'bullseye', skip_modulecheck=True)
+        if not self.sequential():
+            self.copy_build_dir()
 
 
 class ReproTest(CIBaseTest):
@@ -91,6 +93,7 @@ class ReproTest(CIBaseTest):
 
     :avocado: tags=repro,full
     """
+
     def test_repro_signed(self):
         targets = [
             'mc:rpi-arm-v7-bullseye:isar-image-base',
@@ -104,6 +107,9 @@ class ReproTest(CIBaseTest):
         finally:
             self.move_in_build_dir('tmp', 'tmp_repro_signed')
 
+        if not self.sequential():
+            self.copy_build_dir()
+
     def test_repro_unsigned(self):
         targets = [
             'mc:qemuamd64-bullseye:isar-image-base',
@@ -116,6 +122,10 @@ class ReproTest(CIBaseTest):
         finally:
             self.move_in_build_dir('tmp', 'tmp_repro_unsigned')
 
+        if not self.sequential():
+            self.copy_build_dir()
+
+
 class CcacheTest(CIBaseTest):
 
     """
@@ -123,10 +133,14 @@ class CcacheTest(CIBaseTest):
 
     :avocado: tags=ccache,full
     """
+
     def test_ccache_rebuild(self):
         targets = ['mc:qemuamd64-bullseye:hello-isar']
         self.init()
         self.perform_ccache_test(targets)
+        if not self.sequential():
+            self.copy_build_dir()
+
 
 class CrossTest(CIBaseTest):
 
@@ -135,6 +149,7 @@ class CrossTest(CIBaseTest):
 
     :avocado: tags=cross,fast,full
     """
+
     def test_crossb(self):
         targets = [
             'mc:qemuarm-buster:isar-image-ci',
@@ -148,10 +163,9 @@ class CrossTest(CIBaseTest):
                   ]
 
         self.init()
-        self.delete_temp_images()
         self.perform_build_test(targets, debsrc_cache=True)
         if not self.sequential():
-            self.copy_images_general()
+            self.copy_build_dir()
 
     def test_cross_rpi(self):
         targets = [
@@ -161,8 +175,11 @@ class CrossTest(CIBaseTest):
         self.init()
         try:
             self.perform_build_test(targets, debsrc_cache=True)
-        except:
+        except Exception:
             self.cancel('KFAIL')
+
+        if not self.sequential():
+            self.copy_build_dir()
 
 
 class WicTest(CIBaseTest):
@@ -172,24 +189,32 @@ class WicTest(CIBaseTest):
 
     :avocado: tags=wic,full
     """
+
     def test_wic_nodeploy_partitions(self):
         targets = ['mc:qemuarm64-bookworm:isar-image-ci']
 
-        self.init()
-        self.move_in_build_dir('tmp', 'tmp_before_wic')
+        self.init(build_dir='test_wic')
         self.perform_wic_partition_test(targets,
             wic_deploy_parts=False, debsrc_cache=True, compat_arch=False)
 
+        if not self.sequential():
+            self.copy_build_dir()
+
+        self.publish_queue('wic')
+
     def test_wic_deploy_partitions(self):
+        self.init(build_dir='test_wic')
+        self.define_upstream_test_server('wic')
+           
         targets = ['mc:qemuarm64-bookworm:isar-image-ci']
 
-        self.init()
-        # reuse artifelf.init()
-        self.copy_images_for_run('test_dev_arm64')
-        self.vm_start('arm64', 'bullseye', stop_vm=True)
-
+        # reuse artifacts
         self.perform_wic_partition_test(targets,
             wic_deploy_parts=True, debsrc_cache=True, compat_arch=False)
+
+        if not self.sequential():
+            self.copy_build_dir()
+
 
 class NoCrossTest(CIBaseTest):
 
@@ -198,7 +223,8 @@ class NoCrossTest(CIBaseTest):
 
     :avocado: tags=nocross,full
     """
-    def test_nocross(self):
+
+    def test_nocrosss(self):
         targets = [
             'mc:qemuarm-buster:isar-image-ci',
             'mc:qemuarm-bullseye:isar-image-base',
@@ -217,6 +243,7 @@ class NoCrossTest(CIBaseTest):
             'mc:bananapi-bullseye:isar-image-base',
             'mc:bananapi-bookworm:isar-image-base',
             'mc:nanopi-neo-bullseye:isar-image-base',
+            'mc:nanopi-neo-bookworm:isar-image-base',
             'mc:stm32mp15x-bullseye:isar-image-base',
             'mc:qemuamd64-focal:isar-image-ci',
             'mc:qemuamd64-bookworm:isar-image-ci',
@@ -228,9 +255,9 @@ class NoCrossTest(CIBaseTest):
                   ]
 
         self.init()
-        # Cleanup after cross build
-        self.move_in_build_dir('tmp', 'tmp_before_nocross')
         self.perform_build_test(targets, cross=False, debsrc_cache=True)
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_nocross_rpi(self):
         targets = [
@@ -247,8 +274,11 @@ class NoCrossTest(CIBaseTest):
         self.init()
         try:
             self.perform_build_test(targets, cross=False, debsrc_cache=True)
-        except:
+        except Exception:
             self.cancel('KFAIL')
+
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_nocross_sid(self):
         targets = [
@@ -260,8 +290,12 @@ class NoCrossTest(CIBaseTest):
         self.init()
         try:
             self.perform_build_test(targets, cross=False)
-        except:
+        except Exception:
             self.cancel('KFAIL')
+
+        if not self.sequential():
+            self.copy_build_dir()
+
 
 class ContainerImageTest(CIBaseTest):
 
@@ -280,6 +314,9 @@ class ContainerImageTest(CIBaseTest):
 
         self.init()
         self.perform_build_test(targets, container=True)
+        if not self.sequential():
+            self.copy_build_dir()
+
 
 class ContainerSdkTest(CIBaseTest):
 
@@ -294,6 +331,9 @@ class ContainerSdkTest(CIBaseTest):
 
         self.init()
         self.perform_build_test(targets, bitbake_cmd='do_populate_sdk', container=True)
+        if not self.sequential():
+            self.copy_build_dir()
+
 
 class SstateTest(CIBaseTest):
 
@@ -302,12 +342,27 @@ class SstateTest(CIBaseTest):
 
     :avocado: tags=sstate,full
     """
-    def test_sstate(self):
+
+    def test_sstate_populate(self):
+        image_target = 'mc:qemuamd64-bullseye:isar-image-base'
+
+        self.perform_sstate_populate(image_target)
+
+        if not self.sequential():
+            self.copy_build_dir()
+
+        self.publish_queue('sstate')
+
+    def test_sstates(self):
         image_target = 'mc:qemuamd64-bullseye:isar-image-base'
         package_target = 'mc:qemuamd64-bullseye:hello'
 
-        self.init('build-sstate')
+        self.init(build_dir='build-sstate')
+        self.define_upstream_test_server('sstate')
         self.perform_sstate_test(image_target, package_target)
+
+        if not self.sequential():
+            self.copy_build_dir()
 
 
 class SingleTest(CIBaseTest):
@@ -317,13 +372,14 @@ class SingleTest(CIBaseTest):
 
     :avocado: tags=single
     """
+
     def test_single_build(self):
         self.init()
         machine = self.params.get('machine', default='qemuamd64')
         distro = self.params.get('distro', default='bullseye')
         image = self.params.get('image', default='isar-image-base')
 
-        self.perform_build_test('mc:%s-%s:%s' % (machine, distro, image))
+        self.perform_build_test(f'mc:{machine}-{distro}:{image}')
 
     def test_single_run(self):
         self.init()
@@ -365,6 +421,8 @@ class VmBootTestFast(CIBaseTest):
             self.vm_start('arm', 'bullseye', image='isar-image-ci', keep=True)
         else:
             self.vm_start('arm', 'bullseye', image='isar-image-ci')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_arm_bullseye_example_module(self):
         self.init()
@@ -376,6 +434,8 @@ class VmBootTestFast(CIBaseTest):
         else:
             self.vm_start('arm', 'bullseye', image='isar-image-ci',
                           cmd='lsmod | grep example_module')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_arm_bullseye_getty_target(self):
         self.init()
@@ -383,6 +443,8 @@ class VmBootTestFast(CIBaseTest):
             self.copy_images_for_run('test_crossb')
         self.vm_start('arm', 'bullseye', image='isar-image-ci',
                       script='test_systemd_unit.sh getty.target 10')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_arm_buster_fast(self):
         self.init()
@@ -392,7 +454,8 @@ class VmBootTestFast(CIBaseTest):
             self.vm_start('arm', 'buster', image='isar-image-ci', keep=True)
         else:
             self.vm_start('arm', 'buster', image='isar-image-ci')
-
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_arm_buster_getty_target_fast(self):
         self.init()
@@ -404,6 +467,8 @@ class VmBootTestFast(CIBaseTest):
         else:
             self.vm_start('arm', 'buster', image='isar-image-ci',
                           cmd='systemctl is-active getty.target')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_arm_buster_example_module_fast(self):
         self.init()
@@ -411,6 +476,8 @@ class VmBootTestFast(CIBaseTest):
             self.copy_images_for_run('test_crossb', distro='buster')
         self.vm_start('arm', 'buster', image='isar-image-ci',
                       script='test_kernel_module.sh example_module')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_arm_bookworm_fast(self):
         self.init()
@@ -420,6 +487,8 @@ class VmBootTestFast(CIBaseTest):
             self.vm_start('arm', 'bookworm', image='isar-image-ci', keep=True)
         else:
             self.vm_start('arm', 'bookworm', image='isar-image-ci')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_arm_bookworm_example_module(self):
         self.init()
@@ -431,6 +500,8 @@ class VmBootTestFast(CIBaseTest):
         else:
             self.vm_start('arm', 'bookworm', image='isar-image-ci',
                           cmd='lsmod | grep example_module')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_arm_bookworm_getty_target(self):
         self.init()
@@ -438,6 +509,8 @@ class VmBootTestFast(CIBaseTest):
             self.copy_images_for_run('test_crossb', distro='bookworm')
         self.vm_start('arm', 'bookworm', image='isar-image-ci',
                       script='test_systemd_unit.sh getty.target 10')
+        if not self.sequential():
+            self.copy_build_dir()
 
 
 class VmBootTestFull(CIBaseTest):
@@ -448,86 +521,196 @@ class VmBootTestFull(CIBaseTest):
     :avocado: tags=startvm,full
     """
 
-    def test_arm_bullseye(self):
+    def test_arm_bullseye_full(self):
         self.init()
-        self.vm_start('arm','bullseye')
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', image='isar-image-base')
+        self.vm_start('arm', 'bullseye')
+        if not self.sequential():
+            self.copy_build_dir()
 
-    def test_arm_buster(self):
+    def test_arm_buster_full(self):
         self.init()
-        self.vm_start('arm','buster', image='isar-image-ci', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', distro='buster')
+        if self.sequential():
+            self.vm_start('arm', 'buster', image='isar-image-ci', keep=True)
+        else:
+            self.vm_start('arm', 'buster', image='isar-image-ci')
+        if not self.sequential():
+            self.copy_build_dir()
 
-    def test_arm_buster_example_module(self):
+    def test_arm_buster_example_module_full(self):
         self.init()
-        self.vm_start('arm','buster', image='isar-image-ci',
-                      cmd='lsmod | grep example_module', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', distro='buster')
+        if self.sequential():
+            self.vm_start('arm', 'buster', image='isar-image-ci',
+                          cmd='lsmod | grep example_module', keep=True)
+        else:
+            self.vm_start('arm', 'buster', image='isar-image-ci',
+                          cmd='lsmod | grep example_module')
+        if not self.sequential():
+            self.copy_build_dir()
 
-    def test_arm_buster_getty_target(self):
+    def test_arm_buster_getty_target_full(self):
         self.init()
-        self.vm_start('arm','buster', image='isar-image-ci',
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', distro='buster')
+        self.vm_start('arm', 'buster', image='isar-image-ci',
                       script='test_systemd_unit.sh getty.target 10')
+        if not self.sequential():
+            self.copy_build_dir()
 
-    def test_arm64_bullseye(self):
+    def test_arm64_bullseyed(self):
         self.init()
-        self.vm_start('arm64','bullseye', image='isar-image-ci', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='arm64')
+        if self.sequential():
+            self.vm_start('arm64', 'bullseye', image='isar-image-ci',
+                          keep=True)
+        else:
+            self.vm_start('arm64', 'bullseye', image='isar-image-ci')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_arm64_bullseye_getty_target(self):
         self.init()
-        self.vm_start('arm64','bullseye', image='isar-image-ci',
-                      cmd='systemctl is-active getty.target', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='arm64')
+        if self.sequential():
+            self.vm_start('arm64', 'bullseye', image='isar-image-ci',
+                          cmd='systemctl is-active getty.target', keep=True)
+        else:
+            self.vm_start('arm64', 'bullseye', image='isar-image-ci',
+                          cmd='systemctl is-active getty.target')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_arm64_bullseye_example_module(self):
         self.init()
-        self.vm_start('arm64','bullseye', image='isar-image-ci',
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='arm64')
+        self.vm_start('arm64', 'bullseye', image='isar-image-ci',
                       script='test_kernel_module.sh example_module')
+        if not self.sequential():
+            self.copy_build_dir()
 
-    def test_i386_buster(self):
+    def test_i386_busterd(self):
         self.init()
-        self.vm_start('i386','buster')
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='i386',
+                                     distro='buster', image='isar-image-base')
+        self.vm_start('i386', 'buster')
+        if not self.sequential():
+            self.copy_build_dir()
 
-    def test_amd64_buster(self):
+    def test_amd64_busterd(self):
         self.init()
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='amd64',
+                                     distro='buster')
         # test efi boot
         self.vm_start('amd64','buster', image='isar-image-ci')
         # test pcbios boot
         self.vm_start('amd64', 'buster', True, image='isar-image-ci')
+        if not self.sequential():
+            self.copy_build_dir()
 
-    def test_amd64_focal(self):
+    def test_amd64_focals(self):
         self.init()
-        self.vm_start('amd64','focal', image='isar-image-ci', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='amd64',
+                                     distro='focal')
+        if self.sequential():
+            self.vm_start('amd64', 'focal', image='isar-image-ci', keep=True)
+        else:
+            self.vm_start('amd64', 'focal', image='isar-image-ci')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_amd64_focal_example_module(self):
         self.init()
-        self.vm_start('amd64','focal', image='isar-image-ci',
-                      cmd='lsmod | grep example_module', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='amd64',
+                                     distro='focal')
+        if self.sequential():
+            self.vm_start('amd64', 'focal', image='isar-image-ci',
+                          cmd='lsmod | grep example_module', keep=True)
+        else:
+            self.vm_start('amd64', 'focal', image='isar-image-ci',
+                          cmd='lsmod | grep example_module')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_amd64_focal_getty_target(self):
         self.init()
-        self.vm_start('amd64','focal', image='isar-image-ci',
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='amd64',
+                                     distro='focal')
+        self.vm_start('amd64', 'focal', image='isar-image-ci',
                       script='test_systemd_unit.sh getty.target 10')
+        if not self.sequential():
+            self.copy_build_dir()
 
-    def test_amd64_bookworm(self):
+    def test_amd64_bookworms(self):
         self.init()
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='amd64',
+                                     distro='bookworm')
         self.vm_start('amd64', 'bookworm', image='isar-image-ci')
+        if not self.sequential():
+            self.copy_build_dir()
 
-    def test_arm_bookworm(self):
+    def test_arm_bookworm_full(self):
         self.init()
-        self.vm_start('arm','bookworm', image='isar-image-ci')
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', distro='bookworm')
+        self.vm_start('arm', 'bookworm', image='isar-image-ci')
+        if not self.sequential():
+            self.copy_build_dir()
 
-    def test_i386_bookworm(self):
+    def test_i386_bookworms(self):
         self.init()
-        self.vm_start('i386','bookworm')
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='i386',
+                                     distro='bookworm',
+                                     image='isar-image-base')
+        self.vm_start('i386', 'bookworm')
+        if not self.sequential():
+            self.copy_build_dir()
 
-
-    def test_mipsel_bookworm(self):
+    def test_mipsel_bookworms(self):
         self.init()
-        self.vm_start('mipsel','bookworm', image='isar-image-ci', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='mipsel',
+                                     distro='bookworm')
+        if self.sequential():
+            self.vm_start('mipsel', 'bookworm', image='isar-image-ci',
+                          keep=True)
+        else:
+            self.vm_start('mipsel', 'bookworm', image='isar-image-ci')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_mipsel_bookworm_getty_target(self):
         self.init()
-        self.vm_start('mipsel','bookworm', image='isar-image-ci',
-                      cmd='systemctl is-active getty.target', keep=True)
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='mipsel',
+                                     distro='bookworm')
+        if self.sequential():
+            self.vm_start('mipsel', 'bookworm', image='isar-image-ci',
+                          cmd='systemctl is-active getty.target', keep=True)
+        else:
+            self.vm_start('mipsel', 'bookworm', image='isar-image-ci',
+                          cmd='systemctl is-active getty.target')
+        if not self.sequential():
+            self.copy_build_dir()
 
     def test_mipsel_bookworm_example_module(self):
         self.init()
-        self.vm_start('mipsel','bookworm', image='isar-image-ci',
+        if not self.check_path():
+            self.copy_images_for_run('test_nocrosss', arch='mipsel',
+                                     distro='bookworm')
+        self.vm_start('mipsel', 'bookworm', image='isar-image-ci',
                       script='test_kernel_module.sh example_module')
