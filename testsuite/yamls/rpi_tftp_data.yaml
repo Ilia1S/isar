@@ -1,0 +1,16 @@
+---
+username: turar-ci
+ssh_port_tftp: 22
+tftp_server: 192.168.178.37
+ssh_port_nfs: 22
+nfs_server: 192.168.178.37
+ssh_key_path: >-
+    /home/iskochilov/.ssh/id_rsa
+tftp_root_path: /srv/tftp
+nfs_root_path: /srv/nfs
+rpi_host: 192.168.178.12
+ssh_port_rpi: 22
+tty: /dev/ttyDEV71-rpi4b
+switch_number: '7287'
+switch_port: 1
+serial_number: 'd3fc3e43'

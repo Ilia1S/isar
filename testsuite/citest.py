@@ -8,6 +8,7 @@ from cibase import CIBaseTest
 
 UMOCI_AVAILABLE = True
 SKOPEO_AVAILABLE = True
+RSYNC_AVAILABLE = True
 try:
     path.find_command('umoci')
 except path.CmdNotFoundError:
@@ -16,6 +17,11 @@ try:
     path.find_command('skopeo')
 except path.CmdNotFoundError:
     SKOPEO_AVAILABLE = False
+try:
+    path.find_command('rsync')
+except path.CmdNotFoundError:
+    RSYNC_AVAILABLE = False
+    
 
 class DevTest(CIBaseTest):
 
@@ -317,6 +323,32 @@ class SingleTest(CIBaseTest):
         distro = self.params.get('distro', default='bullseye')
 
         self.vm_start(machine.removeprefix('qemu'), distro)
+
+
+class RpiHWTTest(CIBaseTest):
+
+    """
+    Raspberry Pi hardware test via TFTP/NFS
+
+    :avocado: tags=rpitftphw
+    """
+    def test_rpi_hw_build(self):
+        self.init()
+        machine = self.params.get('machine', default='rpi-arm64-v8')
+        distro = self.params.get('distro', default='bookworm')
+        self.perform_build_test(f'mc:{machine}-{distro}:isar-image-base')
+
+    @skipUnless(RSYNC_AVAILABLE, 'rsync not found')
+    def test_rpi_hw_boot(self):
+        self.init()
+        config_name = self.params.get(
+            'config', default=f'testsuite/yamls/rpi_tftp_data.yaml')
+        machine = self.params.get('machine', default='rpi-arm64-v8')
+        distro = self.params.get('distro', default='bookworm')
+        model = self.params.get('model', default='4b')
+        config_values = self.get_config_tftp(config_name, machine, distro)
+        self.start_rpi_tftp(*config_values, distro, machine, model)
+
 
 class SourceTest(CIBaseTest):
 

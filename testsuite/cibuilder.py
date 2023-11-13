@@ -7,17 +7,21 @@ import re
 import select
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tarfile
 import time
 import tempfile
+import yaml
 
+import paramiko
 import start_vm
 
 from avocado import Test
 from avocado.utils import path
 from avocado.utils import process
+from avocado.utils import ssh
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)) + '/../bitbake/lib')
 
@@ -641,3 +645,308 @@ BBPATH .= ":${LAYERDIR}"\
             self.vm_turn_off(vm)
 
         return stdout, stderr
+
+    def get_config_tftp(self, yaml_name, machine, distro):
+        with open(yaml_name, 'r', encoding='utf-8') as yaml_file:
+            yaml_data = yaml.safe_load(yaml_file)
+        required_keys = [
+            'tftp_server', 'nfs_server', 'tftp_root_path', 'nfs_root_path',
+            'rpi_host', 'tty', 'switch_number', 'switch_port',
+            'serial_number',
+        ]
+        output = subprocess.check_output(['bitbake', '-e',
+            f'mc:{machine}-{distro}:isar-image-base'])
+        bb_output = output.decode()
+        rootfs_path = start_vm.get_bitbake_var(bb_output, 'IMAGE_ROOTFS') 
+        for key in required_keys:
+            if key not in yaml_data:
+                self.error(f'{key} is required')
+        config = tuple(yaml_data.get(key, None) for key in required_keys +
+                ['username', 'ssh_port_tftp', 'ssh_port_nfs', 'ssh_port_rpi',
+                 'ssh_key_path']) + (rootfs_path,)
+
+        return config
+
+    def start_rpi_tftp(self, tftp_server, nfs_server, tftp_root_path,
+                       nfs_root_path, rpi_host, tty, switch_number,
+                       switch_port, serial_number, username,
+                       ssh_port_tftp, ssh_port_nfs, ssh_port_rpi,
+                       ssh_key_path, rootfs_path, distro, machine, model):
+
+        current_ip = socket.gethostbyname(socket.gethostname())
+        tftp_rpi_path = os.path.join(tftp_root_path, serial_number)
+        nfs_rpi_path = os.path.join(nfs_root_path, 'isar-ci', serial_number,
+                                    distro)
+        fs_name = os.path.basename(rootfs_path.rstrip('/'))
+
+        self.prepare_files_for_tftp(current_ip, tftp_server, tftp_rpi_path,
+                                    nfs_server, nfs_rpi_path, fs_name,
+                                    rootfs_path, tftp_root_path, model,
+                                    username, ssh_port_tftp, ssh_key_path)
+
+        self.prepare_files_for_nfs(current_ip, nfs_server, nfs_rpi_path,
+                                   fs_name, rootfs_path, username,
+                                   ssh_port_nfs, ssh_key_path)
+
+        self.boot_board(current_ip, rpi_host, tty, serial_number,
+                        switch_number, switch_port, ssh_port_rpi, username,
+                        ssh_key_path, distro, machine)
+
+    def configure_firmware_files(self, current_ip, tftp_server,
+                                 ssh_port_tftp, username, ssh_key_path,
+                                 bootcode_rpi_path, tftp_rpi_path,
+                                 nfs_server, nfs_rpi_path, fs_name, model):
+        if current_ip != tftp_server:
+            with ssh.Session(tftp_server, ssh_port_tftp, username,
+                             ssh_key_path) as session:
+                if model in ['3b', '3b+']:
+                    session.cmd(
+                        f'sed -i -e "s/BOOT_UART=0/BOOT_UART=1/" '
+                        f'{bootcode_rpi_path}', ignore_status=False
+                )
+                session.cmd(
+                    f'echo "[all]\n'
+                    f'enable_uart=1" > {tftp_rpi_path}/config.txt',
+                    ignore_status=False
+                )
+                session.cmd(
+                    f'echo "dwc_otg.lpm_enable=0 console=serial0,'
+                    f'115200 console=tty1 root=/dev/nfs nfsroot={nfs_server}'
+                    f':{nfs_rpi_path}/{fs_name}/,vers=4.1,proto=tcp rw '
+                    f'ip=dhcp rootwait" > {tftp_rpi_path}/cmdline.txt',
+                    ignore_status=False
+                )
+                session.quit()
+
+        elif current_ip == tftp_server:
+            if model in ['3b', '3b+']:
+                with open(bootcode_rpi_path, 'r+b') as bootcode_file:
+                    bootcode_data = bootcode_file.read()
+                    bootcode_data = bootcode_data.replace(b'BOOT_UART=0',
+                                                          b'BOOT_UART=1')
+                    bootcode_file.seek(0)
+                    bootcode_file.write(bootcode_data)
+                    bootcode_file.truncate()
+            config_path = os.path.join(tftp_rpi_path, 'config.txt')
+            with open(config_path, 'w', encoding='utf-8') as config_file:
+                config_file.write('[all]\nenable_uart=1')
+            cmdline_path = os.path.join(tftp_rpi_path, 'cmdline.txt')
+            with open(cmdline_path, 'w', encoding='utf-8') as cmdline_file:
+                cmdline_file.write(
+                    f'dwc_otg.lpm_enable=0 console=serial0,115200 '
+                    f'console=tty1 root=/dev/nfs nfsroot={nfs_server}:'
+                    f'{nfs_rpi_path}/{fs_name},vers=4.1,proto=tcp rw '
+                    f'ip=dhcp rootwait'
+                )
+
+    def prepare_files_for_tftp(self, current_ip, tftp_server, tftp_rpi_path,
+                               nfs_server, nfs_rpi_path, fs_name,
+                               rootfs_path, tftp_root_path, model, username,
+                               ssh_port_tftp, ssh_key_path):
+
+        boot_files = ['cmdline.txt', 'config.txt', 'kernel8.img']
+        bootcode_rpi_path = None
+
+        if model in ['2b', '3b', '3b+']:
+            boot_files.extend(['fixup.dat', 'start.elf'])
+            bootcode_rpi_path = os.path.join(tftp_root_path, 'bootcode.bin')
+            bootcode_orig_path = os.path.join(rootfs_path, 'boot',
+                                              'bootcode.bin')
+            if model == '2b':
+                boot_files.append('bcm2710-rpi-2-b.dtb')
+            elif model == '3b':
+                boot_files.append('bcm2710-rpi-3-b.dtb')
+            elif model == '3b+':
+                boot_files.append('bcm2710-rpi-3-b-plus.dtb')
+        elif model == '4b':
+            boot_files.extend(['bcm2711-rpi-4-b.dtb', 'fixup4.dat',
+                               'start4.elf'])
+
+        if current_ip != tftp_server:
+            with ssh.Session(tftp_server, ssh_port_tftp, username,
+                             ssh_key_path) as session:
+                session.cmd(f'mkdir -p {tftp_rpi_path}')
+            if model in ['2b', '3b', '3b+']:
+                process.run(
+                    f'rsync -az -e "ssh -p {ssh_port_tftp} -i {ssh_key_path}"'
+                    f' {bootcode_orig_path} {username}@{tftp_server}:'
+                    f'{tftp_root_path}/'
+                )
+            for file in boot_files:
+                build_boot_path = os.path.join(rootfs_path, 'boot', file)
+                process.run(
+                    f'rsync -az -e "ssh -p {ssh_port_tftp} -i {ssh_key_path}"'
+                    f' {build_boot_path} {username}@{tftp_server}:'
+                    f'{tftp_rpi_path}/'
+                )
+
+        elif current_ip == tftp_server:
+            os.makedirs(tftp_rpi_path, exist_ok=True)
+            for file in boot_files:
+                build_boot_path = os.path.join(rootfs_path, 'boot', file)
+                shutil.copy(build_boot_path, tftp_rpi_path)
+            if model in ['2b', '3b', '3b+']:
+                shutil.copy(bootcode_orig_path, tftp_root_path)
+
+        self.configure_firmware_files(
+            current_ip, tftp_server, ssh_port_tftp, username, ssh_key_path,
+            bootcode_rpi_path, tftp_rpi_path, nfs_server, nfs_rpi_path,
+            fs_name, model
+        )
+
+    def prepare_files_for_nfs(self, current_ip, nfs_server, nfs_rpi_path,
+                              fs_name, rootfs_path, username,
+                              ssh_port_nfs, ssh_key_path):
+
+        archive_name = f'{fs_name}.tar.gz'
+        if current_ip != nfs_server:
+            with ssh.Session(nfs_server, ssh_port_nfs, username,
+                             ssh_key_path) as session:
+                session.cmd(f'mkdir -p {nfs_rpi_path}')
+            os.chdir(f'{rootfs_path}/..')
+            process.run(f'tar -czf {archive_name} {fs_name}', sudo=True)
+            process.run(
+                f'rsync -az -e "ssh -p {ssh_port_nfs} -i {ssh_key_path}" '
+                f'{archive_name} {username}@{nfs_server}:{nfs_rpi_path}'
+            )
+            process.run(f'rm -f {archive_name}', sudo=True)
+            with ssh.Session(nfs_server, ssh_port_nfs, username,
+                             ssh_key_path) as session:
+                session.cmd(
+                    f'cd {nfs_rpi_path} && '
+                    f'sudo tar -xzf {archive_name} && '
+                    f'sudo rm -f {nfs_rpi_path}/{archive_name}',
+                    ignore_status=False
+                )
+            session.quit()
+
+        elif current_ip == nfs_server:
+            os.makedirs(nfs_rpi_path, exist_ok=True)
+            os.chdir(f'{rootfs_path}/..')
+            process.run(
+                f'tar -czf {nfs_rpi_path}/{archive_name} {fs_name}',
+                sudo=True
+            )
+            os.chdir(nfs_rpi_path)
+            process.run(f'tar -xzf {archive_name}', sudo=True)
+            process.run(f'rm -f {nfs_rpi_path}/{archive_name}',
+                        sudo=True)
+
+    def save_logs(self, distro, serial_number):
+        logdir = f'{self.build_dir}/hw_start'
+        os.makedirs(logdir, exist_ok=True)
+        prefix = f"{time.strftime('%Y%m%d-%H%M%S')}\
+-hw_start_{distro}_{serial_number}_"
+        fd, boot_log = tempfile.mkstemp(suffix='_log.txt', prefix=prefix,
+                                        dir=logdir, text=True)
+        os.chmod(boot_log, 0o644)
+        latest_link = f'{logdir}/hw_start_{distro}_{serial_number}_latest.txt'
+        if os.path.exists(latest_link):
+            os.unlink(latest_link)
+        os.symlink(os.path.basename(boot_log), latest_link)
+        return boot_log
+
+    def setup_serial_and_turn_on(self, current_ip, host, ssh_port, username,
+                                 ssh_key_path, tty, switch_number,
+                                 switch_port, machine):
+        self.log.info('=====================================================')
+        self.log.info('         Running Isar hardware boot test ...         ')
+        self.log.info('=====================================================')
+
+        if current_ip == host:
+            with open(
+                'kerm-{machine}', 'w', encoding='utf-8') as kerm_file:
+                kerm_file.write(
+                    f'set line {tty}\n'
+                    f'set speed 115200\n'
+                    f'set carrier-watch off\n'
+                    f'set flow-control none\n'
+                    f'connect'
+                )
+            process.run(
+                f'sudo clewarecontrol -d {switch_number} -c 1 '
+                f'-as {switch_port} 0'
+            )
+            time.sleep(5)
+            process.run(
+                f'sudo clewarecontrol -d {switch_number} -c 1 '
+                f'-as {switch_port} 1'
+            )
+        elif current_ip != host:
+            with ssh.Session(host, ssh_port, username, ssh_key_path) \
+                as session:
+                session.cmd(
+                    f'echo "set line {tty}\n'
+                    f'set speed 115200\n'
+                    f'set carrier-watch off\n'
+                    f'set flow-control none\n'
+                    f'connect" > kerm-{machine}', ignore_status=False
+                )
+                session.cmd(
+                    f'sudo clewarecontrol -d {switch_number} -c 1 '
+                    f'-as {switch_port} 0', ignore_status=False
+                )
+                time.sleep(5)
+                session.cmd(
+                    f'sudo clewarecontrol -d {switch_number} -c 1 '
+                    f'-as {switch_port} 1', ignore_status=False
+                )
+
+    def boot_board(self, current_ip, host, tty, serial_number,
+                   switch_number, switch_port, ssh_port, username,
+                   ssh_key_path, distro, machine):
+
+        boot_log = self.save_logs(distro, serial_number)
+        self.setup_serial_and_turn_on(
+            current_ip, host, ssh_port, username, ssh_key_path, tty,
+            switch_number, switch_port, machine
+        )
+
+        cmdline = f'kermit -y kerm-{machine}'
+        timeout = time.time() + 60
+        output = ''
+        if current_ip == host:
+            p1 = subprocess.Popen(
+                'exec ' + ' '.join(cmdline), shell=True,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, universal_newlines=True
+            )
+            rc = self.vm_wait_boot(p1, timeout)
+            process.run(
+                f'sudo clewarecontrol -d {switch_number} -c 1 '
+                f'-as {switch_port} 0'
+            )
+            if rc != 0:
+                self.fail('Failed to boot the board')
+
+        elif current_ip != host:
+            login_prompt = 'isar login:'
+            ssh_board = paramiko.SSHClient()
+            ssh_board.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh_board.connect(hostname=host, port=ssh_port,
+                              username=username, key_filename=ssh_key_path)
+            stdin, stdout, stderr = ssh_board.exec_command(cmdline,
+                                                           get_pty=True)
+            while time.time() < timeout:
+                data = stdout.channel.recv(4096).decode('utf-8', 'ignore')
+                output += data
+                if login_prompt in data:
+                    self.log.info('Got login prompt')
+                    ssh_board.exec_command(
+                        f'sudo clewarecontrol -d {switch_number} -c 1 '
+                        f'-as {switch_port} 0'
+                    )
+                    with open(boot_log, 'w', encoding='utf-8') as log_file:
+                        log_file.write(output)
+                    ssh_board.close()
+                    return 0
+                time.sleep(0.2)
+            with open(boot_log, 'w', encoding='utf-8') as log_file:
+                log_file.write(output)
+            self.log.info("Didn't get login prompt")
+            ssh_board.exec_command(
+                f'sudo clewarecontrol -d {switch_number} -c 1 '
+                f'-as {switch_port} 0'
+            )
+            ssh_board.close()
+            self.fail('Failed to boot the board')
