@@ -6,8 +6,6 @@
 import os
 import socket
 import subprocess
-import sys
-import time
 
 def get_bitbake_env(arch, distro, image):
     multiconfig = 'mc:qemu' + arch + '-' + distro + ':' + image
@@ -26,7 +24,6 @@ def format_qemu_cmdline(arch, build, distro, image, out, pid,
     bb_output = get_bitbake_env(arch, distro, image).decode()
 
     extra_args = ''
-    cpu = ['']
 
     image_type = get_bitbake_var(bb_output, 'IMAGE_FSTYPES').split()[0]
     deploy_dir_image = get_bitbake_var(bb_output, 'DEPLOY_DIR_IMAGE')
