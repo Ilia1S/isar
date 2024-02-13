@@ -27,6 +27,12 @@ def format_qemu_cmdline(arch, build, distro, image, out, pid,
 
     image_type = get_bitbake_var(bb_output, 'IMAGE_FSTYPES').split()[0]
     deploy_dir_image = get_bitbake_var(bb_output, 'DEPLOY_DIR_IMAGE')
+
+    if builddir:
+        old_build_part = os.environ['BUILDDIR']
+        new_build_part = builddir
+        deploy_dir_image = deploy_dir_image.replace(old_build_part, new_build_part)
+
     base = 'ubuntu' if distro in ['jammy', 'focal'] else 'debian'
 
     rootfs_image = \
