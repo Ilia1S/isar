@@ -1,0 +1,50 @@
+From 4ba1b344dffc3d03f46271f9108f01e09e115506 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Fri, 9 Sep 2022 17:22:15 +0200
+Subject: [PATCH 015/117] stm32mp: stm32prog: improve the partitioning trace
+
+Improve the partitioning trace done in command stm32prog:
+- remove the trace "partition: Done" when the GPT partitioning is not done
+- indicate the mmc instance used for each 'gpt write' command
+
+[Backport of commit 450036f4eff2 ("stm32mp: stm32prog: improve the partitioning trace")]
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Change-Id: I5587f253ff5aea8f4d46ec994ff04cfb6de7aea6
+---
+ arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog.c b/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog.c
+index b151ce1047..6c34196c1a 100644
+--- a/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog.c
++++ b/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog.c
+@@ -1090,7 +1090,6 @@ static int create_gpt_partitions(struct stm32prog_data *data)
+ 	if (!buf)
+ 		return -ENOMEM;
+ 
+-	puts("partitions : ");
+ 	/* initialize the selected device */
+ 	for (i = 0; i < data->dev_nb; i++) {
+ 		/* create gpt partition support only for full update on MMC */
+@@ -1098,6 +1097,7 @@ static int create_gpt_partitions(struct stm32prog_data *data)
+ 		    !data->dev[i].full_update)
+ 			continue;
+ 
++		printf("partitions on mmc%d: ", data->dev[i].dev_id);
+ 		offset = 0;
+ 		rootfs_found = false;
+ 		memset(buf, 0, buflen);
+@@ -1197,8 +1197,8 @@ static int create_gpt_partitions(struct stm32prog_data *data)
+ 		sprintf(buf, "part list mmc %d", data->dev[i].dev_id);
+ 		run_command(buf, 0);
+ #endif
++		puts("done\n");
+ 	}
+-	puts("done\n");
+ 
+ #ifdef DEBUG
+ 	run_command("mtd list", 0);
+-- 
+2.39.2
+

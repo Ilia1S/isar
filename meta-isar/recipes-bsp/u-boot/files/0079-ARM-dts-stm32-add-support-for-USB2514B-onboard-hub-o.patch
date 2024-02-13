@@ -1,0 +1,46 @@
+From aca5b739ee849864f43a013e2c4a94b640c46358 Mon Sep 17 00:00:00 2001
+From: Fabrice Gasnier <fabrice.gasnier@foss.st.com>
+Date: Mon, 12 Dec 2022 11:44:37 +0100
+Subject: [PATCH 079/117] ARM: dts: stm32: add support for USB2514B onboard hub
+ on stm32mp157c-ev1
+
+Add support for USB2514B onboard hub on stm32mp157c EV1 board. The HUB
+is supplied by a 3v3 PMIC regulator.
+
+[backport from linux ad9591b01d24]
+
+[Backport of commit 214d6e7e68ce ("ARM: dts: stm32: add support for
+ USB2514B onboard hub on stm32mp157c-ev1")]
+
+Signed-off-by: Fabrice Gasnier <fabrice.gasnier@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Reviewed-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Tested-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Change-Id: I57e834cf2903d9c20acb037479f09ea28ecec216
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/279916
+---
+ arch/arm/dts/stm32mp157c-ev1.dts | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/arch/arm/dts/stm32mp157c-ev1.dts b/arch/arm/dts/stm32mp157c-ev1.dts
+index 26654729ec..2d5db41ed6 100644
+--- a/arch/arm/dts/stm32mp157c-ev1.dts
++++ b/arch/arm/dts/stm32mp157c-ev1.dts
+@@ -362,6 +362,14 @@
+ &usbh_ehci {
+ 	phys = <&usbphyc_port0>;
+ 	status = "okay";
++	#address-cells = <1>;
++	#size-cells = <0>;
++	/* onboard HUB */
++	hub@1 {
++		compatible = "usb424,2514";
++		reg = <1>;
++		vdd-supply = <&v3v3>;
++	};
+ };
+ 
+ &usbotg_hs {
+-- 
+2.39.2
+

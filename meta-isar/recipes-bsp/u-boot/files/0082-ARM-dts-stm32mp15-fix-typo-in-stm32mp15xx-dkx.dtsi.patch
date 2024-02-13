@@ -1,0 +1,52 @@
+From 91cc0fc16023eae1db751e69fbf629ee8a8d085a Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Wed, 14 Dec 2022 16:25:00 +0100
+Subject: [PATCH 082/117] ARM: dts: stm32mp15: fix typo in stm32mp15xx-dkx.dtsi
+
+Remove unnecessary space in device tree stm32mp15xx-dkx.dtsi.
+
+[Backport of commit 126aa470d68b ("ARM: dts: stm32mp15: fix typo in
+ stm32mp15xx-dkx.dtsi")]
+
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Change-Id: Ie6e264286646c0b3a316fd10286ad3ffa78e5e08
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/277242
+---
+ arch/arm/dts/stm32mp15xx-dkx.dtsi | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/arch/arm/dts/stm32mp15xx-dkx.dtsi b/arch/arm/dts/stm32mp15xx-dkx.dtsi
+index 5a045d7156..34af90195d 100644
+--- a/arch/arm/dts/stm32mp15xx-dkx.dtsi
++++ b/arch/arm/dts/stm32mp15xx-dkx.dtsi
+@@ -390,21 +390,21 @@
+ 				regulator-always-on;
+ 			};
+ 
+-			 bst_out: boost {
++			bst_out: boost {
+ 				regulator-name = "bst_out";
+ 				interrupts = <IT_OCP_BOOST 0>;
+-			 };
++			};
+ 
+ 			vbus_otg: pwr_sw1 {
+ 				regulator-name = "vbus_otg";
+ 				interrupts = <IT_OCP_OTG 0>;
+-			 };
++			};
+ 
+-			 vbus_sw: pwr_sw2 {
++			vbus_sw: pwr_sw2 {
+ 				regulator-name = "vbus_sw";
+ 				interrupts = <IT_OCP_SWOUT 0>;
+ 				regulator-active-discharge = <1>;
+-			 };
++			};
+ 		};
+ 
+ 		onkey {
+-- 
+2.39.2
+

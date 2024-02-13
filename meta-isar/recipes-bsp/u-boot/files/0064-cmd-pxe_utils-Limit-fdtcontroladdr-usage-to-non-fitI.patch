@@ -1,0 +1,67 @@
+From ece58c4ceda0320148ad990caf275df0318a9e74 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marex@denx.de>
+Date: Wed, 14 Dec 2022 07:45:18 +0100
+Subject: [PATCH 064/117] cmd: pxe_utils: Limit fdtcontroladdr usage to
+ non-fitImage
+
+Commit d5ba6188dfb ("cmd: pxe_utils: Check fdtcontroladdr in label_boot")
+forces '$fdtcontroladdr' DT address as a third parameter of bootm command
+even if the PXE transfer pulls in a fitImage which contains configuration
+node with its own DT that is preferrable to be passed to Linux. Limit the
+$fdtcontroladdr fallback utilization to non-fitImages, since it is highly
+likely a fitImage would come with its own DT, while single-file images do
+need a separate DT.
+
+[Backport of commit 519e6641dbdd ("cmd: pxe_utils: Limit fdtcontroladdr
+ usage to non-fitImage")]
+
+Fixes: d5ba6188dfb ("cmd: pxe_utils: Check fdtcontroladdr in label_boot")
+Signed-off-by: Marek Vasut <marex@denx.de>
+Reviewed-by: Quentin Schulz <quentin.schulz@theobroma-systems.com>
+Tested-by: Quentin Schulz <quentin.schulz@theobroma-systems.com>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+Reviewed-by: Peter Hoyes <peter.hoyes@arm.com>
+Tested-by: Peter Hoyes <peter.hoyes@arm.com>
+Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
+Change-Id: Ia3f3f21016e7b0322860ac48d86369580c53456f
+---
+ boot/pxe_utils.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/boot/pxe_utils.c b/boot/pxe_utils.c
+index a364fa8bb5..60c20562f2 100644
+--- a/boot/pxe_utils.c
++++ b/boot/pxe_utils.c
+@@ -617,7 +617,7 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
+ 	 * bootm, and adjust argc appropriately.
+ 	 *
+ 	 * Scenario 3: If there is an fdtcontroladdr specified, pass it along to
+-	 * bootm, and adjust argc appropriately.
++	 * bootm, and adjust argc appropriately, unless the image type is fitImage.
+ 	 *
+ 	 * Scenario 4: fdt blob is not available.
+ 	 */
+@@ -724,7 +724,10 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
+ 	if (!bootm_argv[3])
+ 		bootm_argv[3] = env_get("fdt_addr");
+ 
+-	if (!bootm_argv[3])
++	kernel_addr_r = genimg_get_kernel_addr(kernel_addr);
++	buf = map_sysmem(kernel_addr_r, 0);
++
++	if (!bootm_argv[3] && genimg_get_format(buf) != IMAGE_FORMAT_FIT)
+ 		bootm_argv[3] = env_get("fdtcontroladdr");
+ 
+ 	if (bootm_argv[3]) {
+@@ -733,8 +736,6 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
+ 		bootm_argc = 4;
+ 	}
+ 
+-	kernel_addr_r = genimg_get_kernel_addr(kernel_addr);
+-	buf = map_sysmem(kernel_addr_r, 0);
+ 	/* Try bootm for legacy and FIT format image */
+ 	if (genimg_get_format(buf) != IMAGE_FORMAT_INVALID &&
+             IS_ENABLED(CONFIG_CMD_BOOTM))
+-- 
+2.39.2
+

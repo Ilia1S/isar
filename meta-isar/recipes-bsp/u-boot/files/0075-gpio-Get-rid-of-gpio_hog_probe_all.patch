@@ -1,0 +1,149 @@
+From 56af350189910bb42c1d5604dec8c6e031c17578 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marex@denx.de>
+Date: Thu, 22 Sep 2022 17:53:26 +0200
+Subject: [PATCH 075/117] gpio: Get rid of gpio_hog_probe_all()
+
+The gpio_hog_probe_all() functionality can be perfectly well replaced by
+DM_FLAG_PROBE_AFTER_BIND DM flag, which would trigger .probe() callback
+of each GPIO hog driver instance after .bind() and thus configure the
+hogged GPIO accordingly.
+
+[Backport of commit 48b3ecbedf82 ("gpio: Get rid of gpio_hog_probe_all()")]
+
+Signed-off-by: Marek Vasut <marex@denx.de>
+Signed-off-by: Quentin Schulz <quentin.schulz@theobroma-systems.com>
+Reviewed-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Samuel Holland <samuel@sholland.org>
+Change-Id: I0f93895296a8d199ae758fcb9c7446707baa74f2
+---
+ common/board_r.c           |  3 ---
+ common/spl/spl.c           |  3 ---
+ doc/README.gpio            |  6 ++----
+ drivers/gpio/gpio-uclass.c | 31 ++++++++-----------------------
+ include/asm-generic/gpio.h |  8 --------
+ 5 files changed, 10 insertions(+), 41 deletions(-)
+
+diff --git a/common/board_r.c b/common/board_r.c
+index 00926dcb1e..e965814764 100644
+--- a/common/board_r.c
++++ b/common/board_r.c
+@@ -750,9 +750,6 @@ static init_fnc_t init_sequence_r[] = {
+ 	initr_status_led,
+ #endif
+ 	/* PPC has a udelay(20) here dating from 2002. Why? */
+-#if defined(CONFIG_GPIO_HOG)
+-	gpio_hog_probe_all,
+-#endif
+ #ifdef CONFIG_BOARD_LATE_INIT
+ 	board_late_init,
+ #endif
+diff --git a/common/spl/spl.c b/common/spl/spl.c
+index 29e0898f03..683e0dfc52 100644
+--- a/common/spl/spl.c
++++ b/common/spl/spl.c
+@@ -770,9 +770,6 @@ void board_init_r(gd_t *dummy1, ulong dummy2)
+ 		}
+ 	}
+ 
+-	if (CONFIG_IS_ENABLED(GPIO_HOG))
+-		gpio_hog_probe_all();
+-
+ #if CONFIG_IS_ENABLED(BOARD_INIT)
+ 	spl_board_init();
+ #endif
+diff --git a/doc/README.gpio b/doc/README.gpio
+index 548ff37b8c..d253f654fa 100644
+--- a/doc/README.gpio
++++ b/doc/README.gpio
+@@ -2,10 +2,8 @@
+ GPIO hog (CONFIG_GPIO_HOG)
+ --------
+ 
+-All the GPIO hog are initialized in gpio_hog_probe_all() function called in
+-board_r.c just before board_late_init() but you can also acces directly to
+-the gpio with gpio_hog_lookup_name().
+-
++All the GPIO hog are initialized using DM_FLAG_PROBE_AFTER_BIND DM flag
++after bind().
+ 
+ Example, for the device tree:
+ 
+diff --git a/drivers/gpio/gpio-uclass.c b/drivers/gpio/gpio-uclass.c
+index a00880e446..fed7a92c5f 100644
+--- a/drivers/gpio/gpio-uclass.c
++++ b/drivers/gpio/gpio-uclass.c
+@@ -315,34 +315,11 @@ static int gpio_hog_probe(struct udevice *dev)
+ 	return 0;
+ }
+ 
+-int gpio_hog_probe_all(void)
+-{
+-	struct udevice *dev;
+-	int ret;
+-	int retval = 0;
+-
+-	for (uclass_first_device(UCLASS_NOP, &dev);
+-	     dev;
+-	     uclass_find_next_device(&dev)) {
+-		if (dev->driver == DM_DRIVER_GET(gpio_hog)) {
+-			ret = device_probe(dev);
+-			if (ret) {
+-				printf("Failed to probe device %s err: %d\n",
+-				       dev->name, ret);
+-				retval = ret;
+-			}
+-		}
+-	}
+-
+-	return retval;
+-}
+-
+ int gpio_hog_lookup_name(const char *name, struct gpio_desc **desc)
+ {
+ 	struct udevice *dev;
+ 
+ 	*desc = NULL;
+-	gpio_hog_probe_all();
+ 	if (!uclass_get_device_by_name(UCLASS_NOP, name, &dev)) {
+ 		struct gpio_hog_priv *priv = dev_get_priv(dev);
+ 
+@@ -1509,9 +1486,17 @@ static int gpio_post_bind(struct udevice *dev)
+ 								 &child);
+ 				if (ret)
+ 					return ret;
++
++				/*
++				 * Make sure gpio-hogs are probed after bind
++				 * since hogs can be essential to the hardware
++				 * system.
++				 */
++				dev_or_flags(child, DM_FLAG_PROBE_AFTER_BIND);
+ 			}
+ 		}
+ 	}
++
+ 	return 0;
+ }
+ 
+diff --git a/include/asm-generic/gpio.h b/include/asm-generic/gpio.h
+index 0fcf70983f..dd0bdf2315 100644
+--- a/include/asm-generic/gpio.h
++++ b/include/asm-generic/gpio.h
+@@ -461,14 +461,6 @@ int dm_gpio_lookup_name(const char *name, struct gpio_desc *desc);
+  */
+ int gpio_hog_lookup_name(const char *name, struct gpio_desc **desc);
+ 
+-/**
+- * gpio_hog_probe_all() - probe all gpio devices with
+- * gpio-hog subnodes.
+- *
+- * @return:	Returns return value from device_probe()
+- */
+-int gpio_hog_probe_all(void);
+-
+ /**
+  * gpio_lookup_name - Look up a GPIO name and return its details
+  *
+-- 
+2.39.2
+

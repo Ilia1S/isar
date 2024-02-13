@@ -1,0 +1,111 @@
+From cdb92fd046706fc1bb781cc03e3c9cb76d69038e Mon Sep 17 00:00:00 2001
+From: Patrice Chotard <patrice.chotard@foss.st.com>
+Date: Tue, 6 Sep 2022 08:15:29 +0200
+Subject: [PATCH 035/117] usb: ehci: Remove unused ehci_{setup,shutdown}_phy()
+ helpers
+
+Remove unused ehci_{setup,shutdown}_phy() helpers now replaced by
+generic_{setup,shutdown}_phy().
+
+[Backport of commit 75341e9c16aa ("usb: ehci: Remove unused ehci_{setup,shutdown}_phy() helpers")]
+
+Signed-off-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Cc: Marek Vasut <marex@denx.de>
+Cc: Simon Glass <sjg@chromium.org>
+Change-Id: I0541689499e4a76405ad3401ab7eabaf6bd681e9
+---
+ drivers/usb/host/ehci-hcd.c | 66 -------------------------------------
+ drivers/usb/host/ehci.h     |  4 ---
+ 2 files changed, 70 deletions(-)
+
+diff --git a/drivers/usb/host/ehci-hcd.c b/drivers/usb/host/ehci-hcd.c
+index f033198a7c..fb970e3148 100644
+--- a/drivers/usb/host/ehci-hcd.c
++++ b/drivers/usb/host/ehci-hcd.c
+@@ -1767,69 +1767,3 @@ struct dm_usb_ops ehci_usb_ops = {
+ };
+ 
+ #endif
+-
+-#ifdef CONFIG_PHY
+-int ehci_setup_phy(struct udevice *dev, struct phy *phy, int index)
+-{
+-	int ret;
+-
+-	if (!phy)
+-		return 0;
+-
+-	ret = generic_phy_get_by_index(dev, index, phy);
+-	if (ret) {
+-		if (ret != -ENOENT) {
+-			dev_err(dev, "failed to get usb phy\n");
+-			return ret;
+-		}
+-	} else {
+-		ret = generic_phy_init(phy);
+-		if (ret) {
+-			dev_dbg(dev, "failed to init usb phy\n");
+-			return ret;
+-		}
+-
+-		ret = generic_phy_power_on(phy);
+-		if (ret) {
+-			dev_dbg(dev, "failed to power on usb phy\n");
+-			return generic_phy_exit(phy);
+-		}
+-	}
+-
+-	return 0;
+-}
+-
+-int ehci_shutdown_phy(struct udevice *dev, struct phy *phy)
+-{
+-	int ret = 0;
+-
+-	if (!phy)
+-		return 0;
+-
+-	if (generic_phy_valid(phy)) {
+-		ret = generic_phy_power_off(phy);
+-		if (ret) {
+-			dev_dbg(dev, "failed to power off usb phy\n");
+-			return ret;
+-		}
+-
+-		ret = generic_phy_exit(phy);
+-		if (ret) {
+-			dev_dbg(dev, "failed to power off usb phy\n");
+-			return ret;
+-		}
+-	}
+-
+-	return 0;
+-}
+-#else
+-int ehci_setup_phy(struct udevice *dev, struct phy *phy, int index)
+-{
+-	return 0;
+-}
+-
+-int ehci_shutdown_phy(struct udevice *dev, struct phy *phy)
+-{
+-	return 0;
+-}
+-#endif
+diff --git a/drivers/usb/host/ehci.h b/drivers/usb/host/ehci.h
+index 5170044a3a..5770d35b46 100644
+--- a/drivers/usb/host/ehci.h
++++ b/drivers/usb/host/ehci.h
+@@ -295,9 +295,5 @@ int ehci_register(struct udevice *dev, struct ehci_hccr *hccr,
+ int ehci_deregister(struct udevice *dev);
+ extern struct dm_usb_ops ehci_usb_ops;
+ 
+-/* EHCI PHY functions */
+-int ehci_setup_phy(struct udevice *dev, struct phy *phy, int index);
+-int ehci_shutdown_phy(struct udevice *dev, struct phy *phy);
+-
+ #include <linux/bitops.h>
+ #endif /* USB_EHCI_H */
+-- 
+2.39.2
+

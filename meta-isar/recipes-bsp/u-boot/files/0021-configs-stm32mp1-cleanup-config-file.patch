@@ -1,0 +1,47 @@
+From 4b3ed34fb6dcbfc02f776936bb66947fd0f40268 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Fri, 16 Sep 2022 16:52:57 +0200
+Subject: [PATCH 021/117] configs: stm32mp1: cleanup config file
+
+Remove the unnecessary comment after the CONFIG_SYS_BOOTM_LEN
+migration to Kconfig.
+
+[Backport of commit 86d5a06ae3b8 ("configs: stm32mp1: cleanup config file")]
+Fixes: c45568cc4e51 ("Convert CONFIG_SYS_BOOTM_LEN to Kconfig")
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Change-Id: I319bb677db4f93ce89a0b3d80a86d4ea7356eabb
+---
+ include/configs/stm32mp13_common.h | 2 --
+ include/configs/stm32mp15_common.h | 2 --
+ 2 files changed, 4 deletions(-)
+
+diff --git a/include/configs/stm32mp13_common.h b/include/configs/stm32mp13_common.h
+index 3ca65ea2a3..78089b965a 100644
+--- a/include/configs/stm32mp13_common.h
++++ b/include/configs/stm32mp13_common.h
+@@ -21,8 +21,6 @@
+  */
+ #define CONFIG_SYS_BOOTMAPSZ		SZ_256M
+ 
+-/* Extend size of kernel image for uncompression */
+-
+ /*MMC SD*/
+ #define CONFIG_SYS_MMC_MAX_DEVICE	2
+ 
+diff --git a/include/configs/stm32mp15_common.h b/include/configs/stm32mp15_common.h
+index c5412ffeb3..bd8e16bc1b 100644
+--- a/include/configs/stm32mp15_common.h
++++ b/include/configs/stm32mp15_common.h
+@@ -21,8 +21,6 @@
+  */
+ #define CONFIG_SYS_BOOTMAPSZ		SZ_256M
+ 
+-/* Extend size of kernel image for uncompression */
+-
+ /*MMC SD*/
+ #define CONFIG_SYS_MMC_MAX_DEVICE	3
+ 
+-- 
+2.39.2
+

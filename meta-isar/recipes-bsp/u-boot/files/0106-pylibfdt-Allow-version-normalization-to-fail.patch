@@ -1,0 +1,76 @@
+From 5b92800fa00dcbfc749fa1e0dcd824e2400a24e0 Mon Sep 17 00:00:00 2001
+From: Tom Rini <trini@konsulko.com>
+Date: Sat, 7 Jan 2023 18:02:26 -0500
+Subject: [PATCH 106/117] pylibfdt: Allow version normalization to fail
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+In some cases, we might not have the sic portion of setuputils
+available. Make our import and use of this be done in try/except blocks
+as this is done to suppress a run-time warning that is otherwise
+non-fatal.
+
+[Backport of commit 051f409d25f8 ("pylibfdt: Allow version normalization
+ to fail")]
+
+Reported-by: Pali Rohár <pali@kernel.org>
+Fixes: 141659187667 ("pylibfdt: Fix disable version normalization")
+Signed-off-by: Tom Rini <trini@konsulko.com>
+Change-Id: Id6f31b1a7b320a0e512deccc50cdc689751f3705
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/293272
+ACI: CIBUILD <MDG-smet-aci-builds@list.st.com>
+Tested-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Domain-Review: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+---
+ scripts/dtc/pylibfdt/setup.py | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/scripts/dtc/pylibfdt/setup.py b/scripts/dtc/pylibfdt/setup.py
+index c07f65e6bc..8baae08770 100755
+--- a/scripts/dtc/pylibfdt/setup.py
++++ b/scripts/dtc/pylibfdt/setup.py
+@@ -20,12 +20,17 @@ allows this script to be run stand-alone, e.g.:
+     ./pylibfdt/setup.py install [--prefix=...]
+ """
+ 
+-from setuptools import setup, Extension, sic
++from setuptools import setup, Extension
+ from setuptools.command.build_py import build_py as _build_py
+ import os
+ import re
+ import sys
+ 
++try:
++    from setuptools import sic
++except ImportError:
++    pass
++
+ srcdir = os.path.dirname(__file__)
+ 
+ with open(os.path.join(srcdir, "../README"), "r") as fh:
+@@ -113,7 +118,10 @@ progname = sys.argv[0]
+ files = os.environ.get('SOURCES', '').split()
+ cflags = os.environ.get('CPPFLAGS', '').split()
+ objdir = os.environ.get('OBJDIR')
+-version = os.environ.get('VERSION')
++try:
++    version = sic(os.environ.get('VERSION'))
++except:
++    version = os.environ.get('VERSION')
+ swig_opts = os.environ.get('SWIG_OPTS', '').split()
+ 
+ # If we were called directly rather than through our Makefile (which is often
+@@ -137,7 +145,7 @@ class build_py(_build_py):
+ 
+ setup(
+     name='libfdt',
+-    version=sic(version),
++    version=version,
+     cmdclass = {'build_py' : build_py},
+     author='Simon Glass',
+     author_email='sjg@chromium.org',
+-- 
+2.39.2
+

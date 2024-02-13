@@ -1,7 +1,8 @@
 # Example recipe for building the mainline kernel
 #
-# This software is a part of ISAR.
-# Copyright (c) Siemens AG, 2018-2020
+# This software is a part of Isar.
+# Copyright (C) Siemens AG, 2018-2020
+# Copyright (C) 2024 ilbers GmbH
 #
 # SPDX-License-Identifier: MIT
 
@@ -12,7 +13,6 @@ ARCHIVE_VERSION = "${@ d.getVar('PV')[:-2] if d.getVar('PV').endswith('.0') else
 SRC_URI += " \
     https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-${ARCHIVE_VERSION}.tar.xz \
     file://x86_64_defconfig \
-    file://ftpm-module.cfg \
     file://subdir/no-ubifs-fs.cfg \
     file://no-root-nfs.cfg;apply=no"
 

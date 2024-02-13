@@ -1,0 +1,35 @@
+From 61aa5822fbd48a376bd41574358ef4a45444639b Mon Sep 17 00:00:00 2001
+From: Etienne Carriere <etienne.carriere@linaro.org>
+Date: Wed, 7 Dec 2022 16:25:33 +0100
+Subject: [PATCH 068/117] tpm2: ftpm: open session with privileged ree login
+
+Opens the fTPM session with TEE_LOGIN_REE_KERNEL as fTPM may restrict
+access to that login when Linux based OS is running as applications are
+expected to got through the Linux TPMv2 driver.
+
+[Backport of commit 33ba80303e93 ("tpm2: ftpm: open session with
+ privileged ree login")]
+
+Signed-off-by: Etienne Carriere <etienne.carriere@linaro.org>
+Reviewed-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+Signed-off-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+Change-Id: I3373bc547b23501ff4bef743f973655f863fb38b
+---
+ drivers/tpm/tpm2_ftpm_tee.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/tpm/tpm2_ftpm_tee.c b/drivers/tpm/tpm2_ftpm_tee.c
+index 53e59f42b4..3c4c12983d 100644
+--- a/drivers/tpm/tpm2_ftpm_tee.c
++++ b/drivers/tpm/tpm2_ftpm_tee.c
+@@ -186,6 +186,7 @@ static int ftpm_tee_probe(struct udevice *dev)
+ 
+ 	/* Open a session with the fTPM TA */
+ 	memset(&sess_arg, 0, sizeof(sess_arg));
++	sess_arg.clnt_login = TEE_LOGIN_REE_KERNEL;
+ 	tee_optee_ta_uuid_to_octets(sess_arg.uuid, &uuid);
+ 
+ 	rc = tee_open_session(context->tee_dev, &sess_arg, 0, NULL);
+-- 
+2.39.2
+

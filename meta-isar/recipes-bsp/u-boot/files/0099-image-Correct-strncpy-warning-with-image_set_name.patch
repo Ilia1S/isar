@@ -1,0 +1,44 @@
+From 107a6575dd3f996af2dd9325e6dc85e5e92d06a4 Mon Sep 17 00:00:00 2001
+From: Simon Glass <sjg@chromium.org>
+Date: Wed, 9 Nov 2022 19:14:39 -0700
+Subject: [PATCH 099/117] image: Correct strncpy() warning with
+ image_set_name()
+
+gcc 12 seems to warn on strncpy() as a matter of course. Rewrite the code
+a different way to do the same thing, to avoid the warning.
+
+[Backport of commit 88ff7cb1c8bb ("image: Correct strncpy() warning with
+ image_set_name()")]
+
+Signed-off-by: Simon Glass <sjg@chromium.org>
+Change-Id: I8f4cbcd5c4f648bbbcf2f695220ec4fe6a54ddd7
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/293259
+Tested-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Domain-Review: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+---
+ include/image.h | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/include/image.h b/include/image.h
+index d7d756c645..6c0dffd3ce 100644
+--- a/include/image.h
++++ b/include/image.h
+@@ -776,7 +776,13 @@ image_set_hdr_b(comp)		/* image_set_comp */
+ 
+ static inline void image_set_name(image_header_t *hdr, const char *name)
+ {
+-	strncpy(image_get_name(hdr), name, IH_NMLEN);
++	/*
++	 * This is equivalent to: strncpy(image_get_name(hdr), name, IH_NMLEN);
++	 *
++	 * Use the tortured code below to avoid a warning with gcc 12. We do not
++	 * want to include a nul terminator if the name is of length IH_NMLEN
++	 */
++	memcpy(image_get_name(hdr), name, strnlen(name, IH_NMLEN));
+ }
+ 
+ int image_check_hcrc(const image_header_t *hdr);
+-- 
+2.39.2
+

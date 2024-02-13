@@ -1,0 +1,99 @@
+From ea5ca6addaf8afe3c93781438b2690ef676b79b9 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Tue, 6 Sep 2022 18:53:18 +0200
+Subject: [PATCH 011/117] stm32mp: stm32prog: change default flashlayout
+ location to CONFIG_SYS_LOAD_ADDR
+
+Change the defaut flashlayout location, hardcoded at STM32_DDR_BASE,
+to CONFIG_SYS_LOAD_ADDR to avoid issue on board with reserved memory
+at STM32_DDR_BASE.
+
+This patch changes the command behavior for STM32MP13 and STM32MP15
+platform, as CONFIG_SYS_LOAD_ADDR(0xc2000000) != STM32_DDR_BASE
+but without impact for serial boot with STM32CubeProgrammer.
+
+[Backport of commit ada8fe0c42da ("stm32mp: stm32prog: change default flashlayout location to CONFIG_SYS_LOAD_ADDR")]
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Change-Id: Ia52d6b1f6e4866602a3fca86dabd4999eef2c859
+---
+ arch/arm/mach-stm32mp/cmd_stm32prog/cmd_stm32prog.c    | 2 +-
+ arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog.c        | 8 ++++----
+ arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog_serial.c | 2 +-
+ arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog_usb.c    | 2 +-
+ 4 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/arch/arm/mach-stm32mp/cmd_stm32prog/cmd_stm32prog.c b/arch/arm/mach-stm32mp/cmd_stm32prog/cmd_stm32prog.c
+index f59414e716..cb9e20da13 100644
+--- a/arch/arm/mach-stm32mp/cmd_stm32prog/cmd_stm32prog.c
++++ b/arch/arm/mach-stm32mp/cmd_stm32prog/cmd_stm32prog.c
+@@ -61,7 +61,7 @@ static int do_stm32prog(struct cmd_tbl *cmdtp, int flag, int argc,
+ 
+ 	dev = (int)dectoul(argv[2], NULL);
+ 
+-	addr = STM32_DDR_BASE;
++	addr = CONFIG_SYS_LOAD_ADDR;
+ 	size = 0;
+ 	if (argc > 3) {
+ 		addr = hextoul(argv[3], NULL);
+diff --git a/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog.c b/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog.c
+index 65e32288af..3b2652a0e0 100644
+--- a/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog.c
++++ b/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog.c
+@@ -1388,7 +1388,7 @@ static int dfu_init_entities(struct stm32prog_data *data)
+ 		char buf[ALT_BUF_LEN];
+ 
+ 		sprintf(buf, "@FlashLayout/0x%02x/1*256Ke ram %x 40000",
+-			PHASE_FLASHLAYOUT, STM32_DDR_BASE);
++			PHASE_FLASHLAYOUT, CONFIG_SYS_LOAD_ADDR);
+ 		ret = dfu_alt_add(dfu, "ram", NULL, buf);
+ 		log_debug("dfu_alt_add(ram, NULL,%s) result %d\n", buf, ret);
+ 	}
+@@ -1699,15 +1699,15 @@ static void stm32prog_end_phase(struct stm32prog_data *data, u64 offset)
+ {
+ 	if (data->phase == PHASE_FLASHLAYOUT) {
+ #if defined(CONFIG_LEGACY_IMAGE_FORMAT)
+-		if (genimg_get_format((void *)STM32_DDR_BASE) == IMAGE_FORMAT_LEGACY) {
+-			data->script = STM32_DDR_BASE;
++		if (genimg_get_format((void *)CONFIG_SYS_LOAD_ADDR) == IMAGE_FORMAT_LEGACY) {
++			data->script = CONFIG_SYS_LOAD_ADDR;
+ 			data->phase = PHASE_END;
+ 			log_notice("U-Boot script received\n");
+ 			return;
+ 		}
+ #endif
+ 		log_notice("\nFlashLayout received, size = %lld\n", offset);
+-		if (parse_flash_layout(data, STM32_DDR_BASE, offset))
++		if (parse_flash_layout(data, CONFIG_SYS_LOAD_ADDR, offset))
+ 			stm32prog_err("Layout: invalid FlashLayout");
+ 		return;
+ 	}
+diff --git a/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog_serial.c b/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog_serial.c
+index 2932eae757..1bf5f5ae0a 100644
+--- a/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog_serial.c
++++ b/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog_serial.c
+@@ -462,7 +462,7 @@ static void get_phase_command(struct stm32prog_data *data)
+ 		length = strlen(err_msg);
+ 	}
+ 	if (phase == PHASE_FLASHLAYOUT)
+-		destination = STM32_DDR_BASE;
++		destination = CONFIG_SYS_LOAD_ADDR;
+ 
+ 	stm32prog_serial_putc(length + 5);           /* Total length */
+ 	stm32prog_serial_putc(phase & 0xFF);         /* partition ID */
+diff --git a/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog_usb.c b/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog_usb.c
+index a8b57c4d8f..bcb4d373f6 100644
+--- a/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog_usb.c
++++ b/arch/arm/mach-stm32mp/cmd_stm32prog/stm32prog_usb.c
+@@ -90,7 +90,7 @@ static int stm32prog_cmd_read(u64 offset, void *buf, long *len)
+ 	}
+ 	phase = stm32prog_data->phase;
+ 	if (phase == PHASE_FLASHLAYOUT)
+-		destination = STM32_DDR_BASE;
++		destination = CONFIG_SYS_LOAD_ADDR;
+ 	dfu_offset = stm32prog_data->offset;
+ 
+ 	/* mandatory header, size = PHASE_MIN_SIZE */
+-- 
+2.39.2
+

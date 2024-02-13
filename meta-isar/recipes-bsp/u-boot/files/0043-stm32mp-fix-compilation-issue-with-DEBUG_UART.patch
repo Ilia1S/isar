@@ -1,0 +1,191 @@
+From dcaca4b63dcdb40551799d0e74a5b89569d12c28 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Tue, 11 Oct 2022 16:44:26 +0200
+Subject: [PATCH 043/117] stm32mp: fix compilation issue with DEBUG_UART
+
+Fix the compilation issue when CONFIG_DEBUG_UART is activated
+
+ drivers/serial/serial_stm32.o: in function `debug_uart_init':
+ drivers/serial/serial_stm32.c:291: undefined reference to \
+    `board_debug_uart_init'
+
+The board_debug_uart_init is needed for SPL boot, called in
+cpu.c::mach_cpu_init(); it is defined in board/st/stm32mp1/spl.c.
+
+But with the removal #ifdefs patch, the function debug_uart_init() is
+always compiled even if not present in the final U-Boot image.
+
+This patch adds a file to provided this function when DEBUG_UART and SPL
+are activated.
+
+[Backport of commit c37a6684818d ("stm32mp: fix compilation issue with DEBUG_UART")]
+
+Fixes: c8b2eef52b6c ("stm32mp15: tidy up #ifdefs in cpu.c")
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Change-Id: I3f5442c2fdab9f6390b92f6e7d8d186f27905825
+---
+ arch/arm/mach-stm32mp/Kconfig.15x |  2 +-
+ board/engicam/stm32mp1/Makefile   |  2 ++
+ board/engicam/stm32mp1/spl.c      | 25 -------------------------
+ board/st/stm32mp1/Makefile        |  2 ++
+ board/st/stm32mp1/debug_uart.c    | 29 +++++++++++++++++++++++++++++
+ board/st/stm32mp1/spl.c           | 28 ----------------------------
+ 6 files changed, 34 insertions(+), 54 deletions(-)
+ create mode 100644 board/st/stm32mp1/debug_uart.c
+
+diff --git a/arch/arm/mach-stm32mp/Kconfig.15x b/arch/arm/mach-stm32mp/Kconfig.15x
+index d516270292..5bd9b53a5d 100644
+--- a/arch/arm/mach-stm32mp/Kconfig.15x
++++ b/arch/arm/mach-stm32mp/Kconfig.15x
+@@ -117,7 +117,7 @@ endif
+ if DEBUG_UART
+ 
+ config DEBUG_UART_BOARD_INIT
+-	default y
++	default y if SPL
+ 
+ # debug on UART4 by default
+ config DEBUG_UART_BASE
+diff --git a/board/engicam/stm32mp1/Makefile b/board/engicam/stm32mp1/Makefile
+index 65560df290..155d33f9ee 100644
+--- a/board/engicam/stm32mp1/Makefile
++++ b/board/engicam/stm32mp1/Makefile
+@@ -8,3 +8,5 @@ obj-y += spl.o
+ else
+ obj-y += stm32mp1.o
+ endif
++
++obj-$(CONFIG_DEBUG_UART_BOARD_INIT) += ../../st/stm32mp1/debug_uart.o
+diff --git a/board/engicam/stm32mp1/spl.c b/board/engicam/stm32mp1/spl.c
+index 3aa738b3fa..2b7779cc01 100644
+--- a/board/engicam/stm32mp1/spl.c
++++ b/board/engicam/stm32mp1/spl.c
+@@ -6,7 +6,6 @@
+  */
+ 
+ #include <common.h>
+-#include <asm/io.h>
+ 
+ /* board early initialisation in board_f: need to use global variable */
+ static u32 opp_voltage_mv __section(".data");
+@@ -22,27 +21,3 @@ int board_early_init_f(void)
+ 	return 0;
+ }
+ 
+-#ifdef CONFIG_DEBUG_UART_BOARD_INIT
+-void board_debug_uart_init(void)
+-{
+-#if (CONFIG_DEBUG_UART_BASE == STM32_UART4_BASE)
+-
+-#define RCC_MP_APB1ENSETR (STM32_RCC_BASE + 0x0A00)
+-#define RCC_MP_AHB4ENSETR (STM32_RCC_BASE + 0x0A28)
+-
+-	/* UART4 clock enable */
+-	setbits_le32(RCC_MP_APB1ENSETR, BIT(16));
+-
+-#define GPIOG_BASE 0x50008000
+-	/* GPIOG clock enable */
+-	writel(BIT(6), RCC_MP_AHB4ENSETR);
+-	/* GPIO configuration for ST boards: Uart4 TX = G11 */
+-	writel(0xffbfffff, GPIOG_BASE + 0x00);
+-	writel(0x00006000, GPIOG_BASE + 0x24);
+-#else
+-
+-#error("CONFIG_DEBUG_UART_BASE: not supported value")
+-
+-#endif
+-}
+-#endif
+diff --git a/board/st/stm32mp1/Makefile b/board/st/stm32mp1/Makefile
+index 65560df290..f2d720b67b 100644
+--- a/board/st/stm32mp1/Makefile
++++ b/board/st/stm32mp1/Makefile
+@@ -8,3 +8,5 @@ obj-y += spl.o
+ else
+ obj-y += stm32mp1.o
+ endif
++
++obj-$(CONFIG_DEBUG_UART_BOARD_INIT) += debug_uart.o
+diff --git a/board/st/stm32mp1/debug_uart.c b/board/st/stm32mp1/debug_uart.c
+new file mode 100644
+index 0000000000..24e3f9f220
+--- /dev/null
++++ b/board/st/stm32mp1/debug_uart.c
+@@ -0,0 +1,29 @@
++// SPDX-License-Identifier: GPL-2.0-or-later OR BSD-3-Clause
++/*
++ * Copyright (C) 2022, STMicroelectronics - All Rights Reserved
++ */
++
++#include <config.h>
++#include <debug_uart.h>
++#include <asm/io.h>
++#include <asm/arch/stm32.h>
++#include <linux/bitops.h>
++
++#define RCC_MP_APB1ENSETR (STM32_RCC_BASE + 0x0A00)
++#define RCC_MP_AHB4ENSETR (STM32_RCC_BASE + 0x0A28)
++
++#define GPIOG_BASE 0x50008000
++
++void board_debug_uart_init(void)
++{
++	if (CONFIG_DEBUG_UART_BASE == STM32_UART4_BASE) {
++		/* UART4 clock enable */
++		setbits_le32(RCC_MP_APB1ENSETR, BIT(16));
++
++		/* GPIOG clock enable */
++		writel(BIT(6), RCC_MP_AHB4ENSETR);
++		/* GPIO configuration for ST boards: Uart4 TX = G11 */
++		writel(0xffbfffff, GPIOG_BASE + 0x00);
++		writel(0x00006000, GPIOG_BASE + 0x24);
++	}
++}
+diff --git a/board/st/stm32mp1/spl.c b/board/st/stm32mp1/spl.c
+index 8e4549a1b3..747ec7e445 100644
+--- a/board/st/stm32mp1/spl.c
++++ b/board/st/stm32mp1/spl.c
+@@ -5,11 +5,7 @@
+ 
+ #include <config.h>
+ #include <common.h>
+-#include <init.h>
+-#include <asm/io.h>
+ #include <asm/arch/sys_proto.h>
+-#include <linux/bitops.h>
+-#include <linux/delay.h>
+ #include "../common/stpmic1.h"
+ 
+ /* board early initialisation in board_f: need to use global variable */
+@@ -29,27 +25,3 @@ int board_early_init_f(void)
+ 	return 0;
+ }
+ 
+-#ifdef CONFIG_DEBUG_UART_BOARD_INIT
+-void board_debug_uart_init(void)
+-{
+-#if (CONFIG_DEBUG_UART_BASE == STM32_UART4_BASE)
+-
+-#define RCC_MP_APB1ENSETR (STM32_RCC_BASE + 0x0A00)
+-#define RCC_MP_AHB4ENSETR (STM32_RCC_BASE + 0x0A28)
+-
+-	/* UART4 clock enable */
+-	setbits_le32(RCC_MP_APB1ENSETR, BIT(16));
+-
+-#define GPIOG_BASE 0x50008000
+-	/* GPIOG clock enable */
+-	writel(BIT(6), RCC_MP_AHB4ENSETR);
+-	/* GPIO configuration for ST boards: Uart4 TX = G11 */
+-	writel(0xffbfffff, GPIOG_BASE + 0x00);
+-	writel(0x00006000, GPIOG_BASE + 0x24);
+-#else
+-
+-#error("CONFIG_DEBUG_UART_BASE: not supported value")
+-
+-#endif
+-}
+-#endif
+-- 
+2.39.2
+

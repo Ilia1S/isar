@@ -1,0 +1,69 @@
+From 600af8c0456a0f207a8fb3a1501aac5092d22c8f Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Fri, 6 Jan 2023 13:20:18 +0100
+Subject: [PATCH 088/117] board: st: Add support of STM32MP13x boards in
+ stm32board cmd
+
+Add board identifiers for STMicroelectronics STM32MP13x boards:
+- DISCO board: MB1635
+
+[Backport of commit 4b002d962850 ("board: st: Add support of
+ STM32MP13x boards in stm32board cmd")]
+
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Change-Id: I5ced2665787083835d5ce398a3bd10163cca62c9
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/270218
+---
+ board/st/common/Kconfig       | 2 +-
+ board/st/common/cmd_stboard.c | 7 ++++---
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/board/st/common/Kconfig b/board/st/common/Kconfig
+index 2f57118bb2..aba3590866 100644
+--- a/board/st/common/Kconfig
++++ b/board/st/common/Kconfig
+@@ -1,7 +1,7 @@
+ config CMD_STBOARD
+ 	bool "stboard - command for OTP board information"
+ 	depends on ARCH_STM32MP
+-	default y if TARGET_ST_STM32MP15x
++	default y if TARGET_ST_STM32MP15x || TARGET_ST_STM32MP13x
+ 	help
+ 	  This compile the stboard command to
+ 	  read and write the board in the OTP.
+diff --git a/board/st/common/cmd_stboard.c b/board/st/common/cmd_stboard.c
+index 213fb5d302..853ab78bbf 100644
+--- a/board/st/common/cmd_stboard.c
++++ b/board/st/common/cmd_stboard.c
+@@ -2,8 +2,8 @@
+ /*
+  * Copyright (C) 2019, STMicroelectronics - All Rights Reserved
+  *
+- * the st command stboard supports the STMicroelectronics board identification
+- * saved in OTP 59.
++ * the command stboard supports the STMicroelectronics board identification
++ * saved in OTP_BOARD.
+  *
+  * The ST product codification have several element
+  * - "Commercial Product Name" (CPN): type of product board (DKX, EVX)
+@@ -18,7 +18,7 @@
+  * - Finished Good = EVA32MP157A1$AU1
+  *
+  * Both information are written on board and these information are also saved
+- * in OTP59, with:
++ * in OTP_BOARD (59 for STM32MP15x or 60 for STM32MP13x), with:
+  * bit [31:16] (hex) => Board id, MBxxxx
+  * bit [15:12] (dec) => Variant CPN (1....15)
+  * bit [11:8]  (dec) => Revision board (index with A = 1, Z = 26)
+@@ -49,6 +49,7 @@ static bool check_stboard(u16 board)
+ 		0x1298,
+ 		0x1341,
+ 		0x1497,
++		0x1635,
+ 	};
+ 
+ 	for (i = 0; i < ARRAY_SIZE(st_board_id); i++)
+-- 
+2.39.2
+

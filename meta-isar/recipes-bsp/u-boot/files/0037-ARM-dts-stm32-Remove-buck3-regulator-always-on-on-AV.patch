@@ -1,0 +1,54 @@
+From c00d414023d2b3c4d7a8b838a9eeb13a9c3b34ef Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marex@denx.de>
+Date: Fri, 23 Sep 2022 03:31:22 +0200
+Subject: [PATCH 037/117] ARM: dts: stm32: Remove buck3 regulator-always-on on
+ AV96
+
+In case the regulator-always-on is present in regulator DT node,
+the regulator is always reconfigured to the voltage set in DT on
+probe, even if regulator_set_value() has been called before. Drop
+the property from AV96 U-Boot DT and enable the regulator manually
+in code, as the board already reconfigures the Buck3 regulator in
+code per PMIC NVM content instead.
+
+[Backport of commit 34be2ada130b ("ARM: dts: stm32: Remove buck3 regulator-always-on on AV96")]
+
+Fixes: 0adf10a87b1 ("ARM: dts: stm32: Configure Buck3 voltage per PMIC NVM on Avenger96")
+Signed-off-by: Marek Vasut <marex@denx.de>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Change-Id: I6807315d264776cec2702441b461fdb99c101dcb
+---
+ arch/arm/dts/stm32mp15xx-dhcor-avenger96-u-boot.dtsi | 4 ++++
+ board/dhelectronics/dh_stm32mp1/board.c              | 1 +
+ 2 files changed, 5 insertions(+)
+
+diff --git a/arch/arm/dts/stm32mp15xx-dhcor-avenger96-u-boot.dtsi b/arch/arm/dts/stm32mp15xx-dhcor-avenger96-u-boot.dtsi
+index 5bed53e3fd..b6fceb9ad5 100644
+--- a/arch/arm/dts/stm32mp15xx-dhcor-avenger96-u-boot.dtsi
++++ b/arch/arm/dts/stm32mp15xx-dhcor-avenger96-u-boot.dtsi
+@@ -102,6 +102,10 @@
+ 	hnp-srp-disable;
+ };
+ 
++&vdd {
++	/delete-property/ regulator-always-on;
++};
++
+ &vdd_io {
+ 	u-boot,dm-spl;
+ };
+diff --git a/board/dhelectronics/dh_stm32mp1/board.c b/board/dhelectronics/dh_stm32mp1/board.c
+index 9188f5381e..b028460918 100644
+--- a/board/dhelectronics/dh_stm32mp1/board.c
++++ b/board/dhelectronics/dh_stm32mp1/board.c
+@@ -595,6 +595,7 @@ static void board_init_regulator_av96(void)
+ 
+ 	/* Adjust Buck3 per preconfigured PMIC voltage from NVM. */
+ 	regulator_set_value(rdev, uv);
++	regulator_set_enable(rdev, true);
+ }
+ 
+ static void board_init_regulator(void)
+-- 
+2.39.2
+

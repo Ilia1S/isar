@@ -1,0 +1,65 @@
+From 1147b9672bb71c7afb2d8824f361eb9b794c6d62 Mon Sep 17 00:00:00 2001
+From: Tom Rini <trini@konsulko.com>
+Date: Wed, 7 Dec 2022 15:49:43 -0500
+Subject: [PATCH 098/117] Makefile: link with --no-warn-rwx-segments
+
+We borrow from the Linux Kernel 0d362be5b142 ("Makefile: link with -z
+noexecstack --no-warn-rwx-segments") here to disable the RWX segment
+linking warnings. We do not also bring in -z noexecstack as that
+requires auditing and using ".note.GNU-stack" on assembly functions
+which do need this feature. Further, we now introduce KBUILD_EFILDFLAGS
+so that we can also pass --no-warn-rwx-segments when linking EFI
+applications, and those do explicitly pass -z execstack.
+
+[Backport of commit 1e1c51f8ace8 ("Makefile: link with
+ --no-warn-rwx-segments")]
+
+Cc: Heinrich Schuchardt <xypron.glpk@gmx.de>
+Cc: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+Signed-off-by: Tom Rini <trini@konsulko.com>
+Reviewed-by: Nick Desaulniers <ndesaulniers@google.com>
+Reviewed-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+Change-Id: I8b28e35725c081a17e5b7ee8903f3a83b1597e2a
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/293258
+Tested-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Domain-Review: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+---
+ Makefile             | 2 ++
+ scripts/Makefile.lib | 6 ++++--
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 50077027ba..ba2166e31d 100644
+--- a/Makefile
++++ b/Makefile
+@@ -799,6 +799,8 @@ KBUILD_CPPFLAGS += $(KCPPFLAGS)
+ KBUILD_AFLAGS += $(KAFLAGS)
+ KBUILD_CFLAGS += $(KCFLAGS)
+ 
++KBUILD_LDFLAGS  += $(call ld-option,--no-warn-rwx-segments)
++
+ KBUILD_HOSTCFLAGS += $(if $(CONFIG_TOOLS_DEBUG),-g)
+ 
+ # Use UBOOTINCLUDE when you must reference the include/ directory.
+diff --git a/scripts/Makefile.lib b/scripts/Makefile.lib
+index 8e13bf2b98..ac45a88478 100644
+--- a/scripts/Makefile.lib
++++ b/scripts/Makefile.lib
+@@ -425,9 +425,11 @@ cmd_efi_objcopy = $(OBJCOPY) -j .header -j .text -j .sdata -j .data -j \
+ $(obj)/%.efi: $(obj)/%_efi.so
+ 	$(call cmd,efi_objcopy)
+ 
++KBUILD_EFILDFLAGS = -nostdlib -zexecstack -znocombreloc -znorelro
++KBUILD_EFILDFLAGS += $(call ld-option,--no-warn-rwx-segments)
+ quiet_cmd_efi_ld = LD      $@
+-cmd_efi_ld = $(LD) -nostdlib -zexecstack -znocombreloc -T $(EFI_LDS_PATH) \
+-		-shared -Bsymbolic -znorelro -s $^ -o $@
++cmd_efi_ld = $(LD) $(KBUILD_EFILDFLAGS) -T $(EFI_LDS_PATH) \
++		-shared -Bsymbolic -s $^ -o $@
+ 
+ EFI_LDS_PATH = $(srctree)/arch/$(ARCH)/lib/$(EFI_LDS)
+ 
+-- 
+2.39.2
+

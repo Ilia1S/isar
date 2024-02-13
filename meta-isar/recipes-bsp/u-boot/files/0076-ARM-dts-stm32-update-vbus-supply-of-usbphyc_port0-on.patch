@@ -1,0 +1,40 @@
+From db090125c0e8a4783859c0f00c86d2f3eedfd82f Mon Sep 17 00:00:00 2001
+From: Fabrice Gasnier <fabrice.gasnier@foss.st.com>
+Date: Mon, 12 Dec 2022 11:32:42 +0100
+Subject: [PATCH 076/117] ARM: dts: stm32: update vbus-supply of usbphyc_port0
+ on stm32mp157c-ev1
+
+phy-stm32-usbphyc bindings uses a connector node with vbus-supply
+property.
+
+[backport from linux 43e55d778a6b]
+[Backport of commit 79da4074ddf0 ("ARM: dts: stm32: update vbus-supply of
+ usbphyc_port0 on stm32mp157c-ev1")]
+
+Signed-off-by: Fabrice Gasnier <fabrice.gasnier@foss.st.com>
+Reviewed-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Change-Id: I4809cb63c6cfdd38017d872362516f7b54f2c27a
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/279917
+---
+ arch/arm/dts/stm32mp157c-ev1.dts | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/arch/arm/dts/stm32mp157c-ev1.dts b/arch/arm/dts/stm32mp157c-ev1.dts
+index d142dd30e1..26654729ec 100644
+--- a/arch/arm/dts/stm32mp157c-ev1.dts
++++ b/arch/arm/dts/stm32mp157c-ev1.dts
+@@ -385,6 +385,10 @@
+ 	st,tune-squelch-level = <3>;
+ 	st,tune-hs-rx-offset = <2>;
+ 	st,no-lsfs-sc;
++	connector {
++		compatible = "usb-a-connector";
++		vbus-supply = <&vbus_sw>;
++	};
+ };
+ 
+ &usbphyc_port1 {
+-- 
+2.39.2
+

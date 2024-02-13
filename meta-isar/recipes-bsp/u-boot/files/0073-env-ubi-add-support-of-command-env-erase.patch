@@ -1,0 +1,92 @@
+From 4db49005315ec994d0cc888630f34193fe4e5c54 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Wed, 14 Dec 2022 14:06:48 +0100
+Subject: [PATCH 073/117] env: ubi: add support of command env erase
+
+Add support of opts erase for ubi env backend, this opts is used by
+command 'env erase'.
+
+This command only zero-fill the env UBI volume CONFIG_ENV_UBI_VOLUME
+and CONFIG_ENV_UBI_VOLUME_REDUND, so the saved environment becomes
+invalid.
+
+This patch introduces a local define ENV_UBI_VOLUME_REDUND
+only to avoid #if in the code, as CONFIG_ENV_UBI_VOLUME_REDUND
+is only defined when CONFIG_SYS_REDUNDAND_ENVIRONMENT is defined.
+
+[Backport of commit 91fc78583419 ("env: ubi: add support of command
+ env erase")]
+
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Reviewed-by: Heiko Schocher <hs@denx.de>
+Change-Id: I8d5c1748a43a5bba6c8470c6a3715d2c9143014a
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/281104
+---
+ env/ubi.c | 40 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 40 insertions(+)
+
+diff --git a/env/ubi.c b/env/ubi.c
+index eb21c4f38b..445d34fedb 100644
+--- a/env/ubi.c
++++ b/env/ubi.c
+@@ -28,6 +28,12 @@
+ 
+ DECLARE_GLOBAL_DATA_PTR;
+ 
++#if CONFIG_SYS_REDUNDAND_ENVIRONMENT
++#define ENV_UBI_VOLUME_REDUND CONFIG_ENV_UBI_VOLUME_REDUND
++#else
++#define ENV_UBI_VOLUME_REDUND "invalid"
++#endif
++
+ #ifdef CONFIG_CMD_SAVEENV
+ #ifdef CONFIG_SYS_REDUNDAND_ENVIRONMENT
+ static int env_ubi_save(void)
+@@ -177,9 +183,43 @@ static int env_ubi_load(void)
+ }
+ #endif /* CONFIG_SYS_REDUNDAND_ENVIRONMENT */
+ 
++static int env_ubi_erase(void)
++{
++	ALLOC_CACHE_ALIGN_BUFFER(char, env_buf, CONFIG_ENV_SIZE);
++	int ret = 0;
++
++	if (ubi_part(CONFIG_ENV_UBI_PART, UBI_VID_OFFSET)) {
++		printf("\n** Cannot find mtd partition \"%s\"\n",
++		       CONFIG_ENV_UBI_PART);
++		return 1;
++	}
++
++	memset(env_buf, 0x0, CONFIG_ENV_SIZE);
++
++	if (ubi_volume_write(CONFIG_ENV_UBI_VOLUME,
++			     (void *)env_buf, CONFIG_ENV_SIZE)) {
++		printf("\n** Unable to erase env to %s:%s **\n",
++		       CONFIG_ENV_UBI_PART,
++		       CONFIG_ENV_UBI_VOLUME);
++		ret = 1;
++	}
++	if (IS_ENABLED(CONFIG_SYS_REDUNDAND_ENVIRONMENT)) {
++		if (ubi_volume_write(ENV_UBI_VOLUME_REDUND,
++				     (void *)env_buf, CONFIG_ENV_SIZE)) {
++			printf("\n** Unable to erase env to %s:%s **\n",
++			       CONFIG_ENV_UBI_PART,
++			       ENV_UBI_VOLUME_REDUND);
++			ret = 1;
++		}
++	}
++
++	return ret;
++}
++
+ U_BOOT_ENV_LOCATION(ubi) = {
+ 	.location	= ENVL_UBI,
+ 	ENV_NAME("UBI")
+ 	.load		= env_ubi_load,
+ 	.save		= env_save_ptr(env_ubi_save),
++	.erase		= ENV_ERASE_PTR(env_ubi_erase),
+ };
+-- 
+2.39.2
+

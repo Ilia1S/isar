@@ -1,0 +1,34 @@
+From f4edd3b117a8ce84ecedff015ac8f42d9896f7c5 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Fri, 6 Jan 2023 13:20:16 +0100
+Subject: [PATCH 086/117] stm32mp: Add support of STM32MP13x in bsec driver
+
+Add support for "st,stm32mp13-bsec" for STM32MP13x in the
+bsec driver based on OP-TEE pseudo TA STM32MP BSEC.
+
+[Backport of commit a33885ff496c ("stm32mp: Add support of STM32MP13x
+ in bsec driver")]
+
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Change-Id: I5265730f7438c864c93089754fad0f2217da3e51
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/270216
+---
+ arch/arm/mach-stm32mp/bsec.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm/mach-stm32mp/bsec.c b/arch/arm/mach-stm32mp/bsec.c
+index fe79c986f9..f5f4b20d47 100644
+--- a/arch/arm/mach-stm32mp/bsec.c
++++ b/arch/arm/mach-stm32mp/bsec.c
+@@ -761,6 +761,7 @@ static int stm32mp_bsec_probe(struct udevice *dev)
+ }
+ 
+ static const struct udevice_id stm32mp_bsec_ids[] = {
++	{ .compatible = "st,stm32mp13-bsec" },
+ 	{ .compatible = "st,stm32mp15-bsec" },
+ 	{}
+ };
+-- 
+2.39.2
+

@@ -1,0 +1,34 @@
+From 6c74c3c3cd3aa842aca8b561e0468bdeac19fdb7 Mon Sep 17 00:00:00 2001
+From: Yann Gautier <yann.gautier@foss.st.com>
+Date: Tue, 13 Sep 2022 13:23:45 +0200
+Subject: [PATCH 045/117] mmc: stm32_sdmmc2: protect against unsupported modes
+
+The UHS modes for SD, HS200 and HS400 modes for eMMC are not supported
+by the stm32_sdmmc2 driver.
+Make it clear by removing the corresponding caps after parsing the DT.
+
+[Backport of commit 27fbce4326a4 ("mmc: stm32_sdmmc2: protect against unsupported modes")]
+
+Signed-off-by: Yann Gautier <yann.gautier@foss.st.com>
+Reviewed-by: Jaehoon Chung <jh80.chung@samsung.com>
+Change-Id: I1262370ae664c3df35b9e6ee0b0d723f58b8d23e
+---
+ drivers/mmc/stm32_sdmmc2.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/mmc/stm32_sdmmc2.c b/drivers/mmc/stm32_sdmmc2.c
+index 3cfa5a66f1..e1240b0cf3 100644
+--- a/drivers/mmc/stm32_sdmmc2.c
++++ b/drivers/mmc/stm32_sdmmc2.c
+@@ -675,6 +675,8 @@ static int stm32_sdmmc2_of_to_plat(struct udevice *dev)
+ 	if (ret)
+ 		return ret;
+ 
++	cfg->host_caps &= ~(UHS_CAPS | MMC_MODE_HS200 | MMC_MODE_HS400 | MMC_MODE_HS400_ES);
++
+ 	ret = clk_get_by_index(dev, 0, &plat->clk);
+ 	if (ret)
+ 		return ret;
+-- 
+2.39.2
+

@@ -1,0 +1,97 @@
+From 8afad6aec7e6586d7347976cf8590531d0a99cd3 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marex@denx.de>
+Date: Tue, 11 Oct 2022 22:42:44 +0200
+Subject: [PATCH 041/117] ARM: dts: stm32: Fix and expand PLL configuration
+ comments
+
+Fix the frequencies listed in PLL configuration comments to match
+the actual frequencies programmed into hardware. Furthermore, add
+a comment which explains how those frequencies are calculated, so
+it won't be necessary to look it up all over the datasheet and
+make more mistakes in the calculation in the future.
+
+[Backport of commit 1587e689b328 ("ARM: dts: stm32: Fix and expand PLL configuration comments")]
+
+Signed-off-by: Marek Vasut <marex@denx.de>
+Cc: Patrice Chotard <patrice.chotard@foss.st.com>
+Cc: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Change-Id: Id96ea9165e04ab2d7e6e6d193812fef0af274fa8
+---
+ arch/arm/dts/stm32mp15xx-dhcom-u-boot.dtsi | 17 ++++++++++++++++-
+ arch/arm/dts/stm32mp15xx-dhcor-u-boot.dtsi | 17 ++++++++++++++++-
+ 2 files changed, 32 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/dts/stm32mp15xx-dhcom-u-boot.dtsi b/arch/arm/dts/stm32mp15xx-dhcom-u-boot.dtsi
+index 8a7156c93b..b72a2f63f1 100644
+--- a/arch/arm/dts/stm32mp15xx-dhcom-u-boot.dtsi
++++ b/arch/arm/dts/stm32mp15xx-dhcom-u-boot.dtsi
+@@ -190,6 +190,21 @@
+ 		CLK_LPTIM45_LSE
+ 	>;
+ 
++	/*
++	 * cfg = < DIVM1 DIVN P Q R PQR(p,q,r) >;
++	 * frac = < f >;
++	 *
++	 * PRQ(p,q,r) ... for p,q,r: 0-output disabled / 1-output enabled
++	 * DIVN ... actually multiplier, but RCC_PLL1CFGR1 calls the field DIVN
++	 * m ... for PLL1,2: m=2 ; for PLL3,4: m=1
++	 * XTAL = 24 MHz
++	 *
++	 * VCO = ( XTAL / (DIVM1 + 1) ) * m * ( DIVN + 1 + ( f / 8192 ) )
++	 *   P = VCO / (P + 1)
++	 *   Q = VCO / (Q + 1)
++	 *   R = VCO / (R + 1)
++	 */
++
+ 	/* VCO = 1066.0 MHz => P = 266 (AXI), Q = 533 (GPU), R = 533 (DDR) */
+ 	pll2: st,pll@1 {
+ 		compatible = "st,stm32mp1-pll";
+@@ -208,7 +223,7 @@
+ 		u-boot,dm-pre-reloc;
+ 	};
+ 
+-	/* VCO = 600.0 MHz => P = 50, Q = 50, R = 50 */
++	/* VCO = 600.0 MHz => P = 100, Q = 50, R = 50 */
+ 	pll4: st,pll@3 {
+ 		compatible = "st,stm32mp1-pll";
+ 		reg = <3>;
+diff --git a/arch/arm/dts/stm32mp15xx-dhcor-u-boot.dtsi b/arch/arm/dts/stm32mp15xx-dhcor-u-boot.dtsi
+index 19f4221f87..25a288b047 100644
+--- a/arch/arm/dts/stm32mp15xx-dhcor-u-boot.dtsi
++++ b/arch/arm/dts/stm32mp15xx-dhcor-u-boot.dtsi
+@@ -144,6 +144,21 @@
+ 		CLK_LPTIM45_LSE
+ 	>;
+ 
++	/*
++	 * cfg = < DIVM1 DIVN P Q R PQR(p,q,r) >;
++	 * frac = < f >;
++	 *
++	 * PRQ(p,q,r) ... for p,q,r: 0-output disabled / 1-output enabled
++	 * DIVN ... actually multiplier, but RCC_PLL1CFGR1 calls the field DIVN
++	 * m ... for PLL1,2: m=2 ; for PLL3,4: m=1
++	 * XTAL = 24 MHz
++	 *
++	 * VCO = ( XTAL / (DIVM1 + 1) ) * m * ( DIVN + 1 + ( f / 8192 ) )
++	 *   P = VCO / (P + 1)
++	 *   Q = VCO / (Q + 1)
++	 *   R = VCO / (R + 1)
++	 */
++
+ 	/* VCO = 1066.0 MHz => P = 266 (AXI), Q = 533 (GPU), R = 533 (DDR) */
+ 	pll2: st,pll@1 {
+ 		compatible = "st,stm32mp1-pll";
+@@ -162,7 +177,7 @@
+ 		u-boot,dm-pre-reloc;
+ 	};
+ 
+-	/* VCO = 600.0 MHz => P = 99, Q = 74, R = 99 */
++	/* VCO = 594.0 MHz => P = 99, Q = 74, R = 99 */
+ 	pll4: st,pll@3 {
+ 		compatible = "st,stm32mp1-pll";
+ 		reg = <3>;
+-- 
+2.39.2
+

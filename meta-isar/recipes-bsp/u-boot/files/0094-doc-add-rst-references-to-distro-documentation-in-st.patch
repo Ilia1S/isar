@@ -1,0 +1,36 @@
+From 336a0711dd49332d32c5710e02f5ab82573075d9 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Tue, 24 Jan 2023 10:16:02 +0100
+Subject: [PATCH 094/117] doc: add rst references to distro documentation in
+ stm32mp1 board
+
+Use internal rst reference with :doc: to have a link to distro.rst page
+in the generated U-Boot documentation.
+
+[Backport of commit e1f0fd525fb1 ("doc: add rst references to distro
+ documentation in stm32mp1 board")]
+
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Change-Id: I3c705a3d661e2db030eb12f37642bd630bdf861d
+---
+ doc/board/st/stm32mp1.rst | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/doc/board/st/stm32mp1.rst b/doc/board/st/stm32mp1.rst
+index 3f70634d28..c0b1daa041 100644
+--- a/doc/board/st/stm32mp1.rst
++++ b/doc/board/st/stm32mp1.rst
+@@ -478,7 +478,8 @@ or:
+   +-------+--------+---------+------------------------+------------------------+
+ 
+ And the 4th partition (Rootfs) is marked bootable with a file extlinux.conf
+-following the Generic Distribution feature (doc/develop/distro.rst for use).
++following the Generic Distribution feature (see :doc:`../../develop/distro` for
++use).
+ 
+ The size of fip or ssbl partition must be enough for the associated binary file,
+ 4MB and 2MB are default values.
+-- 
+2.39.2
+

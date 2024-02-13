@@ -1,0 +1,33 @@
+From 70b4f7c3f7d26708ab8e1ed2905d621cc999b9f7 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Thu, 17 Feb 2022 19:32:08 +0100
+Subject: [PATCH 116/117] board: st: stm32mp1: add stm32mp157f-dk2 support
+
+Add the support of the STMicroelectronics 900MHz variant for DISCOVERY
+board: stm32mp157f-dk2.
+
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Change-Id: I3cdb3d287dacf06dfc1550c53c9e28a693eae6ae
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/270280
+Reviewed-by: CITOOLS <MDG-smet-aci-reviews@list.st.com>
+---
+ board/st/stm32mp1/stm32mp1.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/board/st/stm32mp1/stm32mp1.c b/board/st/stm32mp1/stm32mp1.c
+index 33fca222a0..6f8f0da6e0 100644
+--- a/board/st/stm32mp1/stm32mp1.c
++++ b/board/st/stm32mp1/stm32mp1.c
+@@ -606,7 +606,8 @@ error:
+ static bool board_is_stm32mp15x_dk2(void)
+ {
+ 	if (CONFIG_IS_ENABLED(TARGET_ST_STM32MP15X) &&
+-	    of_machine_is_compatible("st,stm32mp157c-dk2"))
++	    (of_machine_is_compatible("st,stm32mp157c-dk2") ||
++	     of_machine_is_compatible("st,stm32mp157f-dk2")))
+ 		return true;
+ 
+ 	return false;
+-- 
+2.39.2
+

@@ -1,0 +1,38 @@
+From 750222e12524a5b487e267dcf71a8690028398c8 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Fri, 28 Oct 2022 11:01:20 +0200
+Subject: [PATCH 067/117] cmd: pxe: use strdup to copy config
+
+Replace malloc and strcpy by strdup in
+function parse_label_kernel.
+
+[Backport of commit 51c5c28af59c ("cmd: pxe: use strdup to
+ copy config")]
+
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
+Change-Id: I265e5843b2411596c17a0328e676c6e27ffc755d
+---
+ boot/pxe_utils.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/boot/pxe_utils.c b/boot/pxe_utils.c
+index 079af1c877..5b4b8a7229 100644
+--- a/boot/pxe_utils.c
++++ b/boot/pxe_utils.c
+@@ -1179,11 +1179,10 @@ static int parse_label_kernel(char **c, struct pxe_label *label)
+ 	if (!s)
+ 		return 1;
+ 
+-	label->config = malloc(strlen(s) + 1);
++	label->config = strdup(s);
+ 	if (!label->config)
+ 		return -ENOMEM;
+ 
+-	strcpy(label->config, s);
+ 	*s = 0;
+ 
+ 	return 1;
+-- 
+2.39.2
+

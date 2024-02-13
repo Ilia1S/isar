@@ -1,0 +1,55 @@
+From 45aae9311238ed5d13ec6acb922348d608baa1e5 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marex@denx.de>
+Date: Tue, 6 Dec 2022 03:35:13 +0100
+Subject: [PATCH 057/117] ARM: stm32: Enable assorted ST specific commands on
+ DHSOM
+
+Enable the stm32prog, stm32key, stboard commands on DHSOM.
+Those can be used e.g. to implement verified boot.
+
+[Backport of commit 0eca0b1075a4 ("ARM: stm32: Enable assorted ST specific commands on DHSOM")]
+
+Signed-off-by: Marek Vasut <marex@denx.de>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Reviewed-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Change-Id: I6b457a20d21877545957c0d390fb644afa1ead82
+---
+ configs/stm32mp15_dhcom_basic_defconfig | 4 ++++
+ configs/stm32mp15_dhcor_basic_defconfig | 4 ++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/configs/stm32mp15_dhcom_basic_defconfig b/configs/stm32mp15_dhcom_basic_defconfig
+index 609d33f5a4..f0415615b2 100644
+--- a/configs/stm32mp15_dhcom_basic_defconfig
++++ b/configs/stm32mp15_dhcom_basic_defconfig
+@@ -11,7 +11,11 @@ CONFIG_SPL_MMC=y
+ CONFIG_BOOTCOUNT_BOOTLIMIT=3
+ CONFIG_SYS_BOOTCOUNT_ADDR=0x5C00A14C
+ CONFIG_SPL=y
++CONFIG_CMD_STM32KEY=y
++CONFIG_CMD_STBOARD=y
+ CONFIG_TARGET_DH_STM32MP1_PDK2=y
++CONFIG_CMD_STM32PROG=y
++CONFIG_CMD_STM32PROG_OTP=y
+ CONFIG_SPL_SPI_FLASH_SUPPORT=y
+ CONFIG_SPL_SPI=y
+ # CONFIG_ARMV7_VIRT is not set
+diff --git a/configs/stm32mp15_dhcor_basic_defconfig b/configs/stm32mp15_dhcor_basic_defconfig
+index 825e802a34..6bcc3e5edb 100644
+--- a/configs/stm32mp15_dhcor_basic_defconfig
++++ b/configs/stm32mp15_dhcor_basic_defconfig
+@@ -11,7 +11,11 @@ CONFIG_SPL_MMC=y
+ CONFIG_BOOTCOUNT_BOOTLIMIT=3
+ CONFIG_SYS_BOOTCOUNT_ADDR=0x5C00A14C
+ CONFIG_SPL=y
++CONFIG_CMD_STM32KEY=y
++CONFIG_CMD_STBOARD=y
+ CONFIG_TARGET_DH_STM32MP1_PDK2=y
++CONFIG_CMD_STM32PROG=y
++CONFIG_CMD_STM32PROG_OTP=y
+ CONFIG_SPL_SPI_FLASH_SUPPORT=y
+ CONFIG_SPL_SPI=y
+ # CONFIG_ARMV7_VIRT is not set
+-- 
+2.39.2
+

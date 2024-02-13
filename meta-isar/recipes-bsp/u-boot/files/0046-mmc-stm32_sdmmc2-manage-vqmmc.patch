@@ -1,0 +1,61 @@
+From 732876f34c28647df26f6ed5d64cfe4eb51815f0 Mon Sep 17 00:00:00 2001
+From: Yann Gautier <yann.gautier@foss.st.com>
+Date: Tue, 13 Sep 2022 13:23:46 +0200
+Subject: [PATCH 046/117] mmc: stm32_sdmmc2: manage vqmmc
+
+The SDMMC IOs can be in an IO domain, that has to be enabled.
+This is done by enabling vqmmc in the driver.
+This has no impact on configurations not using an IO domain, the check
+can then be executed on all platforms managing regulator, and the vqmmc
+regulator enabled on all platforms having it in their DT.
+
+[Backport of commit 359c176de550 ("mmc: stm32_sdmmc2: manage vqmmc")]
+
+Signed-off-by: Yann Gautier <yann.gautier@foss.st.com>
+Reviewed-by: Jaehoon Chung <jh80.chung@samsung.com>
+Change-Id: I434a10c46f389f90808a1cadb4742dc89a4f80b4
+---
+ drivers/mmc/stm32_sdmmc2.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/drivers/mmc/stm32_sdmmc2.c b/drivers/mmc/stm32_sdmmc2.c
+index e1240b0cf3..1195134844 100644
+--- a/drivers/mmc/stm32_sdmmc2.c
++++ b/drivers/mmc/stm32_sdmmc2.c
+@@ -25,6 +25,7 @@
+ #include <asm/io.h>
+ #include <asm/gpio.h>
+ #include <linux/iopoll.h>
++#include <power/regulator.h>
+ #include <watchdog.h>
+ 
+ struct stm32_sdmmc2_plat {
+@@ -36,6 +37,9 @@ struct stm32_sdmmc2_plat {
+ 	struct gpio_desc cd_gpio;
+ 	u32 clk_reg_msk;
+ 	u32 pwr_reg_msk;
++#if CONFIG_IS_ENABLED(DM_REGULATOR)
++	bool vqmmc_enabled;
++#endif
+ };
+ 
+ struct stm32_sdmmc2_ctx {
+@@ -572,6 +576,15 @@ static void stm32_sdmmc2_pwron(struct stm32_sdmmc2_plat *plat)
+ 	       plat->base + SDMMC_POWER);
+ 
+ 	/* during the first 74 SDMMC_CK cycles the SDMMC is still disabled. */
++
++#if CONFIG_IS_ENABLED(DM_REGULATOR)
++	if (plat->mmc.vqmmc_supply && !plat->vqmmc_enabled) {
++		if (regulator_set_enable_if_allowed(plat->mmc.vqmmc_supply, true))
++			dev_dbg(plat->mmc.dev, "failed to enable vqmmc-supply\n");
++		else
++			plat->vqmmc_enabled = true;
++	}
++#endif
+ }
+ 
+ #define IS_RISING_EDGE(reg) (reg & SDMMC_CLKCR_NEGEDGE ? 0 : 1)
+-- 
+2.39.2
+

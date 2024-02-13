@@ -1,0 +1,40 @@
+From 261a762e9c2d6c03470dc6a55ee451d70254209d Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Wed, 30 Nov 2022 11:42:02 +0100
+Subject: [PATCH 060/117] dfu: Make DFU virtual backend SPL friendly
+
+Define stub for dfu_*_virt function in SPL, because
+CONFIG_SPL_DFU_VIRT is not defined.
+
+This patch avoids compilation issue in dfu_fill_entity() when
+CONFIG_SPL_DFU is activated because the dfu_fill_entity_virt()
+function is not available.
+
+[Backport of commit bcd4110702d3 ("dfu: Make DFU virtual backend SPL friendly")]
+
+Fixes: ec44cace4b8d2 ("dfu: add DFU virtual backend")
+Reported-by: Marek Vasut <marex@denx.de>
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Marek Vasut <marex@denx.de>
+Tested-by: Marek Vasut <marex@denx.de>
+Change-Id: I6a38a8b6d153f858461450ed957e85642a197451
+---
+ include/dfu.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/dfu.h b/include/dfu.h
+index dcb9cd9d79..07922224ef 100644
+--- a/include/dfu.h
++++ b/include/dfu.h
+@@ -495,7 +495,7 @@ static inline int dfu_fill_entity_mtd(struct dfu_entity *dfu, char *devstr,
+ }
+ #endif
+ 
+-#ifdef CONFIG_DFU_VIRT
++#if CONFIG_IS_ENABLED(DFU_VIRT)
+ int dfu_fill_entity_virt(struct dfu_entity *dfu, char *devstr,
+ 			 char **argv, int argc);
+ int dfu_write_medium_virt(struct dfu_entity *dfu, u64 offset,
+-- 
+2.39.2
+

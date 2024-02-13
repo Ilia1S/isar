@@ -1,0 +1,50 @@
+From 91ac2a5fbdf37fdbd13483dc1069b3ff392bee28 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Wed, 14 Dec 2022 14:50:41 +0100
+Subject: [PATCH 074/117] env: add failing trace in env_erase
+
+Add trace in env save to indicate any errors to end user and avoid
+silent output when the command 'env erase' is not executed as it is
+done in env_save with commit 8968288cb477 ("env: add failing trace in
+env_save")
+
+[Backport of commit 1c44d1087925 ("env: add failing trace in env_erase")]
+
+Signed-off-by: Patrick Delaunay <patrick.delaunay@st.com>
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Reviewed-by: Heiko Schocher <hs@denx.de>
+Change-Id: I10631f84f71a23c2c3c6ede7299743000ce82ccd
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/281105
+Tested-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Domain-Review: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+---
+ env/env.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/env/env.c b/env/env.c
+index 69848fb060..06078c7f37 100644
+--- a/env/env.c
++++ b/env/env.c
+@@ -311,11 +311,15 @@ int env_erase(void)
+ 	if (drv) {
+ 		int ret;
+ 
+-		if (!drv->erase)
++		if (!drv->erase) {
++			printf("not possible\n");
+ 			return -ENODEV;
++		}
+ 
+-		if (!env_has_inited(drv->location))
++		if (!env_has_inited(drv->location)) {
++			printf("not initialized\n");
+ 			return -ENODEV;
++		}
+ 
+ 		printf("Erasing Environment on %s... ", drv->name);
+ 		ret = drv->erase();
+-- 
+2.39.2
+

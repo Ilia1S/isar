@@ -1,0 +1,44 @@
+From 029b2978c3d10ac47750faefb771efe9e7331312 Mon Sep 17 00:00:00 2001
+From: Yann Gautier <yann.gautier@foss.st.com>
+Date: Tue, 13 Sep 2022 13:23:44 +0200
+Subject: [PATCH 044/117] mmc: stm32_sdmmc2: add dual data rate support
+
+To support dual data rate with STM32 sdmmc2 driver, the dedicated bit
+(DDR - BIT(18)) needs to be set in the CLKRC register. Clock bypass
+(no divider) is not allowed in this case. This is required for the
+eMMC DDR modes.
+
+[Backport of commit be1872982e42 ("mmc: stm32_sdmmc2: add dual data rate support")]
+
+Signed-off-by: Yann Gautier <yann.gautier@foss.st.com>
+Reviewed-by: Jaehoon Chung <jh80.chung@samsung.com>
+Change-Id: I7b6ef02d1418389fe40403fd5e22647839b63420
+---
+ drivers/mmc/stm32_sdmmc2.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/mmc/stm32_sdmmc2.c b/drivers/mmc/stm32_sdmmc2.c
+index bfce8a2e4a..3cfa5a66f1 100644
+--- a/drivers/mmc/stm32_sdmmc2.c
++++ b/drivers/mmc/stm32_sdmmc2.c
+@@ -598,13 +598,16 @@ static int stm32_sdmmc2_set_ios(struct udevice *dev)
+ 	 * clk_div > 0 and NEGEDGE = 1 => command and data generated on
+ 	 * SDMMCCLK falling edge
+ 	 */
+-	if (desired && ((sys_clock > desired) ||
++	if (desired && (sys_clock > desired || mmc->ddr_mode ||
+ 			IS_RISING_EDGE(plat->clk_reg_msk))) {
+ 		clk = DIV_ROUND_UP(sys_clock, 2 * desired);
+ 		if (clk > SDMMC_CLKCR_CLKDIV_MAX)
+ 			clk = SDMMC_CLKCR_CLKDIV_MAX;
+ 	}
+ 
++	if (mmc->ddr_mode)
++		clk |= SDMMC_CLKCR_DDR;
++
+ 	if (mmc->bus_width == 4)
+ 		clk |= SDMMC_CLKCR_WIDBUS_4;
+ 	if (mmc->bus_width == 8)
+-- 
+2.39.2
+

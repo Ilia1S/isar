@@ -1,0 +1,97 @@
+From d1db5143bbbba931ad9891a057e4bbc4c5de843f Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marex@denx.de>
+Date: Wed, 2 Nov 2022 14:53:49 +0100
+Subject: [PATCH 054/117] ARM: dts: stm32: Drop MMCI interrupt-names
+
+The pl18x MMCI driver does not use the interrupt-names property,
+the binding document has been updated to recommend this property
+be unused, remove it.
+Backport of Marek's Linux patch:
+https://lore.kernel.org/linux-arm-kernel/20221013221242.218808-3-marex@denx.de/
+
+[Backport of commit 666b1a712d81 ("ARM: dts: stm32: Drop MMCI interrupt-names")]
+
+Reviewed-by: Linus Walleij <linus.walleij@linaro.org>
+Reviewed-by: Yann Gautier <yann.gautier@foss.st.com>
+Signed-off-by: Marek Vasut <marex@denx.de>
+Signed-off-by: Alexandre Torgue <alexandre.torgue@foss.st.com>
+Signed-off-by: Yann Gautier <yann.gautier@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Change-Id: I65c3f376dc8557fa7f52cc67796b8613195bb4ef
+---
+ arch/arm/dts/stm32h743.dtsi  | 2 --
+ arch/arm/dts/stm32mp131.dtsi | 2 --
+ arch/arm/dts/stm32mp151.dtsi | 3 ---
+ 3 files changed, 7 deletions(-)
+
+diff --git a/arch/arm/dts/stm32h743.dtsi b/arch/arm/dts/stm32h743.dtsi
+index ceb629c4fa..c490d0a571 100644
+--- a/arch/arm/dts/stm32h743.dtsi
++++ b/arch/arm/dts/stm32h743.dtsi
+@@ -339,7 +339,6 @@
+ 			arm,primecell-periphid = <0x10153180>;
+ 			reg = <0x52007000 0x1000>;
+ 			interrupts = <49>;
+-			interrupt-names = "cmd_irq";
+ 			clocks = <&rcc SDMMC1_CK>;
+ 			clock-names = "apb_pclk";
+ 			resets = <&rcc STM32H7_AHB3_RESET(SDMMC1)>;
+@@ -353,7 +352,6 @@
+ 			arm,primecell-periphid = <0x10153180>;
+ 			reg = <0x48022400 0x400>;
+ 			interrupts = <124>;
+-			interrupt-names = "cmd_irq";
+ 			clocks = <&rcc SDMMC2_CK>;
+ 			clock-names = "apb_pclk";
+ 			resets = <&rcc STM32H7_AHB2_RESET(SDMMC2)>;
+diff --git a/arch/arm/dts/stm32mp131.dtsi b/arch/arm/dts/stm32mp131.dtsi
+index d893bc24b4..3cf51f09bc 100644
+--- a/arch/arm/dts/stm32mp131.dtsi
++++ b/arch/arm/dts/stm32mp131.dtsi
+@@ -196,7 +196,6 @@
+ 			arm,primecell-periphid = <0x20253180>;
+ 			reg = <0x58005000 0x1000>, <0x58006000 0x1000>;
+ 			interrupts = <GIC_SPI 50 IRQ_TYPE_LEVEL_HIGH>;
+-			interrupt-names = "cmd_irq";
+ 			clocks = <&rcc SDMMC1_K>;
+ 			clock-names = "apb_pclk";
+ 			resets = <&rcc SDMMC1_R>;
+@@ -211,7 +210,6 @@
+ 			arm,primecell-periphid = <0x20253180>;
+ 			reg = <0x58007000 0x1000>, <0x58008000 0x1000>;
+ 			interrupts = <GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH>;
+-			interrupt-names = "cmd_irq";
+ 			clocks = <&rcc SDMMC2_K>;
+ 			clock-names = "apb_pclk";
+ 			resets = <&rcc SDMMC2_R>;
+diff --git a/arch/arm/dts/stm32mp151.dtsi b/arch/arm/dts/stm32mp151.dtsi
+index f0fb022fc6..8bbb1aef2e 100644
+--- a/arch/arm/dts/stm32mp151.dtsi
++++ b/arch/arm/dts/stm32mp151.dtsi
+@@ -1102,7 +1102,6 @@
+ 			arm,primecell-periphid = <0x00253180>;
+ 			reg = <0x48004000 0x400>;
+ 			interrupts = <GIC_SPI 137 IRQ_TYPE_LEVEL_HIGH>;
+-			interrupt-names = "cmd_irq";
+ 			clocks = <&rcc SDMMC3_K>;
+ 			clock-names = "apb_pclk";
+ 			resets = <&rcc SDMMC3_R>;
+@@ -1435,7 +1434,6 @@
+ 			arm,primecell-periphid = <0x00253180>;
+ 			reg = <0x58005000 0x1000>;
+ 			interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
+-			interrupt-names = "cmd_irq";
+ 			clocks = <&rcc SDMMC1_K>;
+ 			clock-names = "apb_pclk";
+ 			resets = <&rcc SDMMC1_R>;
+@@ -1450,7 +1448,6 @@
+ 			arm,primecell-periphid = <0x00253180>;
+ 			reg = <0x58007000 0x1000>;
+ 			interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;
+-			interrupt-names = "cmd_irq";
+ 			clocks = <&rcc SDMMC2_K>;
+ 			clock-names = "apb_pclk";
+ 			resets = <&rcc SDMMC2_R>;
+-- 
+2.39.2
+

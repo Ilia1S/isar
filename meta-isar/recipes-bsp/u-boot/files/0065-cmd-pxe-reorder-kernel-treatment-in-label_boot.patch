@@ -1,0 +1,111 @@
+From 06a8e278a72e623afc2e4e2d16d212226e2fdb90 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Fri, 28 Oct 2022 11:01:18 +0200
+Subject: [PATCH 065/117] cmd: pxe: reorder kernel treatment in label_boot
+
+Reorder kernel treatment in label_boot at the beginning of the function.
+
+This patch doesn't change the pxe command behavior, it is only a
+preliminary step for next patch, build kernel_addr before parsing
+the label initrd and fdt to build the next bootm arguments.
+
+[Backport of commit f723c2778cf8 ("cmd: pxe: reorder kernel treatment
+ in label_boot")]
+
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
+Change-Id: Id4878d313e17d7194c0ab2028c33f175c3a9a519
+---
+ boot/pxe_utils.c | 49 ++++++++++++++++++++++++------------------------
+ 1 file changed, 24 insertions(+), 25 deletions(-)
+
+diff --git a/boot/pxe_utils.c b/boot/pxe_utils.c
+index 60c20562f2..bf00187e27 100644
+--- a/boot/pxe_utils.c
++++ b/boot/pxe_utils.c
+@@ -521,6 +521,27 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
+ 		return 1;
+ 	}
+ 
++	if (get_relfile_envaddr(ctx, label->kernel, "kernel_addr_r",
++				NULL) < 0) {
++		printf("Skipping %s for failure retrieving kernel\n",
++		       label->name);
++		return 1;
++	}
++
++	kernel_addr = env_get("kernel_addr_r");
++	/* for FIT, append the configuration identifier */
++	if (label->config) {
++		int len = strlen(kernel_addr) + strlen(label->config) + 1;
++
++		fit_addr = malloc(len);
++		if (!fit_addr) {
++			printf("malloc fail (FIT address)\n");
++			return 1;
++		}
++		snprintf(fit_addr, len, "%s%s", kernel_addr, label->config);
++		kernel_addr = fit_addr;
++	}
++
+ 	if (label->initrd) {
+ 		ulong size;
+ 
+@@ -528,21 +549,14 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
+ 					&size) < 0) {
+ 			printf("Skipping %s for failure retrieving initrd\n",
+ 			       label->name);
+-			return 1;
++			goto cleanup;
+ 		}
+ 
+ 		initrd_addr_str = env_get("ramdisk_addr_r");
+ 		size = snprintf(initrd_str, sizeof(initrd_str), "%s:%lx",
+ 				initrd_addr_str, size);
+ 		if (size >= sizeof(initrd_str))
+-			return 1;
+-	}
+-
+-	if (get_relfile_envaddr(ctx, label->kernel, "kernel_addr_r",
+-				NULL) < 0) {
+-		printf("Skipping %s for failure retrieving kernel\n",
+-		       label->name);
+-		return 1;
++			goto cleanup;
+ 	}
+ 
+ 	if (label->ipappend & 0x1) {
+@@ -572,7 +586,7 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
+ 			       strlen(label->append ?: ""),
+ 			       strlen(ip_str), strlen(mac_str),
+ 			       sizeof(bootargs));
+-			return 1;
++			goto cleanup;
+ 		}
+ 
+ 		if (label->append)
+@@ -587,21 +601,6 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
+ 		printf("append: %s\n", finalbootargs);
+ 	}
+ 
+-	kernel_addr = env_get("kernel_addr_r");
+-
+-	/* for FIT, append the configuration identifier */
+-	if (label->config) {
+-		int len = strlen(kernel_addr) + strlen(label->config) + 1;
+-
+-		fit_addr = malloc(len);
+-		if (!fit_addr) {
+-			printf("malloc fail (FIT address)\n");
+-			return 1;
+-		}
+-		snprintf(fit_addr, len, "%s%s", kernel_addr, label->config);
+-		kernel_addr = fit_addr;
+-	}
+-
+ 	/*
+ 	 * fdt usage is optional:
+ 	 * It handles the following scenarios.
+-- 
+2.39.2
+

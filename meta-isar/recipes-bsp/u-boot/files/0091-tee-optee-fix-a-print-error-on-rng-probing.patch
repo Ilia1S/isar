@@ -1,0 +1,37 @@
+From 26019fe2dd673deb27d8946489ccbc5793be11c6 Mon Sep 17 00:00:00 2001
+From: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+Date: Wed, 18 Jan 2023 17:38:21 +0200
+Subject: [PATCH 091/117] tee: optee: fix a print error on rng probing
+
+If we fail to probe the optee-rng device, we print a wrong message
+referring to the firmware tpm.
+
+[Backport of commit 218a9917d6f0 ("tee: optee: fix a print error on rng
+ probing")]
+
+Fixes: 476a3d58dfeb ("tee: optee: don't fail probe because of optee-rng")
+Reviewed-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Etienne Carriere <etienne.carriere@linaro.org>
+Reviewed-by: Jens Wiklander <jens.wiklander@linaro.org>
+Signed-off-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+Change-Id: Ieb767aa56f336a288c3798437294fac6ee5e451a
+---
+ drivers/tee/optee/core.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/tee/optee/core.c b/drivers/tee/optee/core.c
+index a813a84a4f..88e23d252b 100644
+--- a/drivers/tee/optee/core.c
++++ b/drivers/tee/optee/core.c
+@@ -850,7 +850,7 @@ static int optee_probe(struct udevice *dev)
+ 		ret = device_bind_driver_to_node(dev, "optee-rng", "optee-rng",
+ 						 dev_ofnode(dev), NULL);
+ 		if (ret)
+-			dev_warn(dev, "ftpm_tee failed to bind: %d\n", ret);
++			dev_warn(dev, "optee-rng failed to bind: %d\n", ret);
+ 	}
+ 
+ 	return 0;
+-- 
+2.39.2
+

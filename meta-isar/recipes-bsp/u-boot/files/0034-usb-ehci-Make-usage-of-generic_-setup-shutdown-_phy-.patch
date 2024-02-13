@@ -1,0 +1,131 @@
+From 94f8400aaf255eca88266c997b492f939edb9cf7 Mon Sep 17 00:00:00 2001
+From: Patrice Chotard <patrice.chotard@foss.st.com>
+Date: Tue, 6 Sep 2022 08:15:28 +0200
+Subject: [PATCH 034/117] usb: ehci: Make usage of
+ generic_{setup,shutdown}_phy() helpers
+
+Replace ehci_setup_phy() and ehci_shutdown_phy () by respectively
+generic_setup_phy() and generic_shutdown_phy().
+
+[Backport of commit 083f8aa978a8 ("usb: ehci: Make usage of generic_{setup,shutdown}_phy() helpers")]
+
+Signed-off-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Cc: Marek Vasut <marex@denx.de>
+Cc: Simon Glass <sjg@chromium.org>
+Change-Id: If8099d172554621cbe348451896a4a4356c9d2dc
+---
+ drivers/usb/host/ehci-generic.c | 6 +++---
+ drivers/usb/host/ehci-msm.c     | 4 ++--
+ drivers/usb/host/ehci-mx6.c     | 6 +++---
+ drivers/usb/host/ehci-pci.c     | 4 ++--
+ 4 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/usb/host/ehci-generic.c b/drivers/usb/host/ehci-generic.c
+index 75c73bfe4e..a765a307a3 100644
+--- a/drivers/usb/host/ehci-generic.c
++++ b/drivers/usb/host/ehci-generic.c
+@@ -96,7 +96,7 @@ static int ehci_usb_probe(struct udevice *dev)
+ 	if (err)
+ 		goto reset_err;
+ 
+-	err = ehci_setup_phy(dev, &priv->phy, 0);
++	err = generic_setup_phy(dev, &priv->phy, 0);
+ 	if (err)
+ 		goto regulator_err;
+ 
+@@ -111,7 +111,7 @@ static int ehci_usb_probe(struct udevice *dev)
+ 	return 0;
+ 
+ phy_err:
+-	ret = ehci_shutdown_phy(dev, &priv->phy);
++	ret = generic_shutdown_phy(&priv->phy);
+ 	if (ret)
+ 		dev_err(dev, "failed to shutdown usb phy (ret=%d)\n", ret);
+ 
+@@ -141,7 +141,7 @@ static int ehci_usb_remove(struct udevice *dev)
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = ehci_shutdown_phy(dev, &priv->phy);
++	ret = generic_shutdown_phy(&priv->phy);
+ 	if (ret)
+ 		return ret;
+ 
+diff --git a/drivers/usb/host/ehci-msm.c b/drivers/usb/host/ehci-msm.c
+index d160cf019d..dd0d153500 100644
+--- a/drivers/usb/host/ehci-msm.c
++++ b/drivers/usb/host/ehci-msm.c
+@@ -56,7 +56,7 @@ static int ehci_usb_probe(struct udevice *dev)
+ 	hcor = (struct ehci_hcor *)((phys_addr_t)hccr +
+ 			HC_LENGTH(ehci_readl(&(hccr)->cr_capbase)));
+ 
+-	ret = ehci_setup_phy(dev, &p->phy, 0);
++	ret = generic_setup_phy(dev, &p->phy, 0);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -81,7 +81,7 @@ static int ehci_usb_remove(struct udevice *dev)
+ 	/* Stop controller. */
+ 	clrbits_le32(&ehci->usbcmd, CMD_RUN);
+ 
+-	ret = ehci_shutdown_phy(dev, &p->phy);
++	ret = generic_shutdown_phy(&p->phy);
+ 	if (ret)
+ 		return ret;
+ 
+diff --git a/drivers/usb/host/ehci-mx6.c b/drivers/usb/host/ehci-mx6.c
+index e30449b55e..fa2ca2a1d9 100644
+--- a/drivers/usb/host/ehci-mx6.c
++++ b/drivers/usb/host/ehci-mx6.c
+@@ -726,7 +726,7 @@ static int ehci_usb_probe(struct udevice *dev)
+ 	mdelay(10);
+ 
+ #if defined(CONFIG_PHY)
+-	ret = ehci_setup_phy(dev, &priv->phy, 0);
++	ret = generic_setup_phy(dev, &priv->phy, 0);
+ 	if (ret)
+ 		goto err_regulator;
+ #endif
+@@ -743,7 +743,7 @@ static int ehci_usb_probe(struct udevice *dev)
+ 
+ err_phy:
+ #if defined(CONFIG_PHY)
+-	ehci_shutdown_phy(dev, &priv->phy);
++	generic_shutdown_phy(&priv->phy);
+ err_regulator:
+ #endif
+ #if CONFIG_IS_ENABLED(DM_REGULATOR)
+@@ -767,7 +767,7 @@ int ehci_usb_remove(struct udevice *dev)
+ 	ehci_deregister(dev);
+ 
+ #if defined(CONFIG_PHY)
+-	ehci_shutdown_phy(dev, &priv->phy);
++	generic_shutdown_phy(&priv->phy);
+ #endif
+ 
+ #if CONFIG_IS_ENABLED(DM_REGULATOR)
+diff --git a/drivers/usb/host/ehci-pci.c b/drivers/usb/host/ehci-pci.c
+index 1ab306147f..e98ab31261 100644
+--- a/drivers/usb/host/ehci-pci.c
++++ b/drivers/usb/host/ehci-pci.c
+@@ -31,7 +31,7 @@ static int ehci_pci_init(struct udevice *dev, struct ehci_hccr **ret_hccr,
+ 	int ret;
+ 	u32 cmd;
+ 
+-	ret = ehci_setup_phy(dev, &priv->phy, 0);
++	ret = generic_setup_phy(dev, &priv->phy, 0);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -149,7 +149,7 @@ static int ehci_pci_remove(struct udevice *dev)
+ 	if (ret)
+ 		return ret;
+ 
+-	return ehci_shutdown_phy(dev, &priv->phy);
++	return generic_shutdown_phy(&priv->phy);
+ }
+ 
+ static const struct udevice_id ehci_pci_ids[] = {
+-- 
+2.39.2
+

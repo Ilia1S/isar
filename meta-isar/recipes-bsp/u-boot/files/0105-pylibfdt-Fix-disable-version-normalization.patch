@@ -1,0 +1,72 @@
+From 6dd1476130e8d75fda0f74f94d673f1057333953 Mon Sep 17 00:00:00 2001
+From: Philippe Schenker <philippe.schenker@toradex.com>
+Date: Wed, 4 Jan 2023 15:43:33 +0100
+Subject: [PATCH 105/117] pylibfdt: Fix disable version normalization
+
+On Arch Linux based systems python setuptools does not contain
+"setuptools.extern" hence it is failing with the following
+error-message:
+"
+ModuleNotFoundError: No module named 'setuptools.extern'
+"
+
+According to a eschwartz `setuptools.extern` is not a public API and
+shall not be assumed to be present in the setuptools package. He
+mentions that the setuptools project anyway wants to drop this. [1]
+
+Use the correct solution introduced by python setuptools developers to
+disable normalization. [2]
+
+[Backport of commit 141659187667 ("pylibfdt: Fix disable version
+ normalization")]
+
+[1] https://bbs.archlinux.org/viewtopic.php?id=259608
+[2] https://github.com/pypa/setuptools/pull/2026
+Fixes: 440098c42e73 ("pylibfdt: Fix version normalization warning")
+Signed-off-by: Philippe Schenker <philippe.schenker@toradex.com>
+Reviewed-by: Marek Vasut <marex@denx.de>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+Change-Id: Icf1f5135092b750de4290550a37bd2a2e12b7e68
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/293271
+ACI: CIBUILD <MDG-smet-aci-builds@list.st.com>
+Tested-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Domain-Review: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+---
+ scripts/dtc/pylibfdt/setup.py | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/scripts/dtc/pylibfdt/setup.py b/scripts/dtc/pylibfdt/setup.py
+index 9abdb57595..c07f65e6bc 100755
+--- a/scripts/dtc/pylibfdt/setup.py
++++ b/scripts/dtc/pylibfdt/setup.py
+@@ -20,16 +20,12 @@ allows this script to be run stand-alone, e.g.:
+     ./pylibfdt/setup.py install [--prefix=...]
+ """
+ 
+-from setuptools import setup, Extension
++from setuptools import setup, Extension, sic
+ from setuptools.command.build_py import build_py as _build_py
+-from setuptools.extern.packaging import version
+ import os
+ import re
+ import sys
+ 
+-# Disable version normalization
+-version.Version = version.LegacyVersion
+-
+ srcdir = os.path.dirname(__file__)
+ 
+ with open(os.path.join(srcdir, "../README"), "r") as fh:
+@@ -141,7 +137,7 @@ class build_py(_build_py):
+ 
+ setup(
+     name='libfdt',
+-    version=version,
++    version=sic(version),
+     cmdclass = {'build_py' : build_py},
+     author='Simon Glass',
+     author_email='sjg@chromium.org',
+-- 
+2.39.2
+

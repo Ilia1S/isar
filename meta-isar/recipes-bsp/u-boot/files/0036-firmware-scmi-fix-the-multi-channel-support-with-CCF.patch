@@ -1,0 +1,83 @@
+From b0d317aa63b80d5454a10246837498fbaede6d3e Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Fri, 30 Sep 2022 09:36:38 +0200
+Subject: [PATCH 036/117] firmware: scmi: fix the multi channel support with
+ CCF
+
+When the CCF is activated, the dev->parent is not necessary
+the reference to SCMI transport and the function devm_scmi_of_get_channel
+failed for the registered SCMI clock, child for protocol@14,
+the channel is null and the SCMI clock driver crash for any operations.
+
+This patch changes the first parameter of the ops of_get_channel(),
+aligned with other process_msg() to pass directly the good reference,
+i.e. parent result of find_scmi_transport_device(dev)
+which return the reference of the scmi transport device.
+
+[Backport of commit eebb967dce04 ("firmware: scmi: fix the multi channel support with CCF")]
+
+Fixes: 8e96801aa6a ("firmware: scmi: add multi-channel support")
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Change-Id: Idf284bebbcfe7e8a32ca60c70060933aec01623c
+---
+ drivers/firmware/scmi/mailbox_agent.c     | 2 +-
+ drivers/firmware/scmi/optee_agent.c       | 2 +-
+ drivers/firmware/scmi/scmi_agent-uclass.c | 2 +-
+ drivers/firmware/scmi/smccc_agent.c       | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/firmware/scmi/mailbox_agent.c b/drivers/firmware/scmi/mailbox_agent.c
+index 3efdab9e72..8277c18606 100644
+--- a/drivers/firmware/scmi/mailbox_agent.c
++++ b/drivers/firmware/scmi/mailbox_agent.c
+@@ -96,7 +96,7 @@ static int setup_channel(struct udevice *dev, struct scmi_mbox_channel *chan)
+ static int scmi_mbox_get_channel(struct udevice *dev,
+ 				 struct scmi_channel **channel)
+ {
+-	struct scmi_mbox_channel *base_chan = dev_get_plat(dev->parent);
++	struct scmi_mbox_channel *base_chan = dev_get_plat(dev);
+ 	struct scmi_mbox_channel *chan;
+ 	int ret;
+ 
+diff --git a/drivers/firmware/scmi/optee_agent.c b/drivers/firmware/scmi/optee_agent.c
+index 2b2b8c1670..db927fb214 100644
+--- a/drivers/firmware/scmi/optee_agent.c
++++ b/drivers/firmware/scmi/optee_agent.c
+@@ -326,7 +326,7 @@ static int setup_channel(struct udevice *dev, struct scmi_optee_channel *chan)
+ static int scmi_optee_get_channel(struct udevice *dev,
+ 				  struct scmi_channel **channel)
+ {
+-	struct scmi_optee_channel *base_chan = dev_get_plat(dev->parent);
++	struct scmi_optee_channel *base_chan = dev_get_plat(dev);
+ 	struct scmi_optee_channel *chan;
+ 	u32 channel_id;
+ 	int ret;
+diff --git a/drivers/firmware/scmi/scmi_agent-uclass.c b/drivers/firmware/scmi/scmi_agent-uclass.c
+index 2b6211c4e6..5c98a304a2 100644
+--- a/drivers/firmware/scmi/scmi_agent-uclass.c
++++ b/drivers/firmware/scmi/scmi_agent-uclass.c
+@@ -137,7 +137,7 @@ int devm_scmi_of_get_channel(struct udevice *dev, struct scmi_channel **channel)
+ 		return -ENODEV;
+ 
+ 	if (transport_dev_ops(parent)->of_get_channel)
+-		return transport_dev_ops(parent)->of_get_channel(dev, channel);
++		return transport_dev_ops(parent)->of_get_channel(parent, channel);
+ 
+ 	/* Drivers without a get_channel operator don't need a channel ref */
+ 	*channel = NULL;
+diff --git a/drivers/firmware/scmi/smccc_agent.c b/drivers/firmware/scmi/smccc_agent.c
+index bc2eb67335..6a52cd75d6 100644
+--- a/drivers/firmware/scmi/smccc_agent.c
++++ b/drivers/firmware/scmi/smccc_agent.c
+@@ -83,7 +83,7 @@ static int setup_channel(struct udevice *dev, struct scmi_smccc_channel *chan)
+ static int scmi_smccc_get_channel(struct udevice *dev,
+ 				  struct scmi_channel **channel)
+ {
+-	struct scmi_smccc_channel *base_chan = dev_get_plat(dev->parent);
++	struct scmi_smccc_channel *base_chan = dev_get_plat(dev);
+ 	struct scmi_smccc_channel *chan;
+ 	u32 func_id;
+ 	int ret;
+-- 
+2.39.2
+

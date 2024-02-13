@@ -1,0 +1,118 @@
+From 7c3b31feb7753e504832a385e782fbd5c56f7bda Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Fri, 25 Nov 2022 12:56:29 +0100
+Subject: [PATCH 061/117] firmware: scmi: use protocol node name to bind the
+ scmi regulator driver
+
+In scmi firmware driver, it is better to bind the scmi protocol driver
+"scmi_voltage_domain" with the node name of the protocol 17 and not
+the sub-node named "regulator", because is a fixed string which doesn't
+provide information and because it is not aligned with the other scmi
+protocol nodes.
+
+For example on stm32mp135f-dk board with device tree in stm32mp131.dtsi
+
+scmi: scmi {
+	compatible = "linaro,scmi-optee";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	linaro,optee-channel-id = <0>;
+	shmem = <&scmi_shm>;
+	scmi_clk: protocol@14 {
+		reg = <0x14>;
+		#clock-cells = <1>;
+	};
+	scmi_reset: protocol@16 {
+		reg = <0x16>;
+		#reset-cells = <1>;
+	};
+	scmi_voltd: protocol@17 {
+		reg = <0x17>;
+		scmi_regu: regulators {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			scmi_reg11: voltd-reg11 {
+				reg = <VOLTD_SCMI_REG11>;
+				regulator-name = "reg11";
+			};
+			scmi_reg18: voltd-reg18 {
+				reg = <VOLTD_SCMI_REG18>;
+				regulator-name = "reg18";
+			};
+			scmi_usb33: voltd-usb33 {
+				reg = <VOLTD_SCMI_USB33>;
+				regulator-name = "usb33";
+			};
+		};
+	};
+};
+
+Before the patch:
+
+> dm tree
+
+ scmi_agent    0  [ + ]   scmi-over-optee       |-- scmi
+ clk           1  [ + ]   scmi_clk              |   |-- protocol@14
+ ...
+ reset         1  [   ]   scmi_reset_domain     |   |-- protocol@16
+ nop           2  [ + ]   scmi_voltage_domain   |   `-- regulators
+ regulator     0  [ + ]   scmi_regulator        |       |-- voltd-reg11
+ regulator     1  [ + ]   scmi_regulator        |       |-- voltd-reg18
+ regulator     2  [ + ]   scmi_regulator        |       |-- voltd-usb33
+ ...
+
+after the patch:
+
+> dm tree
+
+ scmi_agent    0  [ + ]   scmi-over-optee       |-- scmi
+ clk           1  [ + ]   scmi_clk              |   |-- protocol@14
+ ...
+ reset         1  [   ]   scmi_reset_domain     |   |-- protocol@16
+ nop           2  [ + ]   scmi_voltage_domain   |   `-- protocol@17
+ regulator     0  [ + ]   scmi_regulator        |       |-- voltd-reg11
+ regulator     1  [ + ]   scmi_regulator        |       |-- voltd-reg18
+ regulator     2  [ + ]   scmi_regulator        |       |-- voltd-usb33
+ ...
+
+[Backport of commit 55b0affd26e5 ("firmware: scmi: use protocol node name to bind the scmi regulator driver")]
+
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Change-Id: I24e82172c3d262c3290b62c3b22e7b2e02efbcb1
+---
+ drivers/firmware/scmi/scmi_agent-uclass.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/firmware/scmi/scmi_agent-uclass.c b/drivers/firmware/scmi/scmi_agent-uclass.c
+index 5c98a304a2..fb89c61215 100644
+--- a/drivers/firmware/scmi/scmi_agent-uclass.c
++++ b/drivers/firmware/scmi/scmi_agent-uclass.c
+@@ -60,6 +60,7 @@ static int scmi_bind_protocols(struct udevice *dev)
+ {
+ 	int ret = 0;
+ 	ofnode node;
++	const char *name;
+ 
+ 	dev_for_each_subnode(node, dev) {
+ 		struct driver *drv = NULL;
+@@ -71,6 +72,7 @@ static int scmi_bind_protocols(struct udevice *dev)
+ 		if (ofnode_read_u32(node, "reg", &protocol_id))
+ 			continue;
+ 
++		name = ofnode_get_name(node);
+ 		switch (protocol_id) {
+ 		case SCMI_PROTOCOL_ID_CLOCK:
+ 			if (IS_ENABLED(CONFIG_CLK_SCMI))
+@@ -100,8 +102,7 @@ static int scmi_bind_protocols(struct udevice *dev)
+ 			continue;
+ 		}
+ 
+-		ret = device_bind(dev, drv, ofnode_get_name(node), NULL, node,
+-				  NULL);
++		ret = device_bind(dev, drv, name, NULL, node, NULL);
+ 		if (ret)
+ 			break;
+ 	}
+-- 
+2.39.2
+

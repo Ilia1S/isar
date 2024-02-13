@@ -1,0 +1,50 @@
+From f06355cb9645708f71412fb6cce8d6f059e03e72 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marex@denx.de>
+Date: Thu, 15 Dec 2022 23:37:59 +0100
+Subject: [PATCH 104/117] pylibfdt: Fix version normalization warning
+
+Fix the following version normalization warning:
+"
+/usr/lib/python3/dist-packages/setuptools/dist.py:530: UserWarning: Normalizing '2023.01' to '2023.1'
+"
+
+Using suggestion from Richard Jones:
+https://github.com/pypa/setuptools/issues/308#issuecomment-405817468
+
+[Backport of commit 440098c42e73 ("pylibfdt: Fix version
+ normalization warning")]
+
+Signed-off-by: Marek Vasut <marex@denx.de>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+Change-Id: Ib64b88f4384ee807d357682cc93184530e56c325
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/293270
+ACI: CIBUILD <MDG-smet-aci-builds@list.st.com>
+Tested-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Domain-Review: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+---
+ scripts/dtc/pylibfdt/setup.py | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/scripts/dtc/pylibfdt/setup.py b/scripts/dtc/pylibfdt/setup.py
+index ec1fc5002b..9abdb57595 100755
+--- a/scripts/dtc/pylibfdt/setup.py
++++ b/scripts/dtc/pylibfdt/setup.py
+@@ -22,10 +22,14 @@ allows this script to be run stand-alone, e.g.:
+ 
+ from setuptools import setup, Extension
+ from setuptools.command.build_py import build_py as _build_py
++from setuptools.extern.packaging import version
+ import os
+ import re
+ import sys
+ 
++# Disable version normalization
++version.Version = version.LegacyVersion
++
+ srcdir = os.path.dirname(__file__)
+ 
+ with open(os.path.join(srcdir, "../README"), "r") as fh:
+-- 
+2.39.2
+

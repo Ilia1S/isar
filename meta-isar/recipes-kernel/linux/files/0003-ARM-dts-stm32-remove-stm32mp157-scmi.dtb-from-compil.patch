@@ -1,0 +1,183 @@
+From 862215637d4ec8f71b46ea5eeea03b59f9c36f89 Mon Sep 17 00:00:00 2001
+From: Amelie Delaunay <amelie.delaunay@foss.st.com>
+Date: Mon, 3 Oct 2022 11:47:55 +0200
+Subject: [PATCH 03/11] ARM: dts: stm32: remove stm32mp157*-scmi.dtb from
+ compilation
+
+To ease STM32MP157 ST boards rebase, remove stm32mp157*-scmi.dtb from
+compilation.
+stm32mp157*-scmi.dts will be used (after being renamed into .dtsi) as
+include in stm32mp157*.dts.
+Due to inclusion in stm32mp157*.dts, there is a special case
+regarding stm32mp157c-ev1-scmi.dts(i). Indeed, stm32mp15-scmi.dtsi
+include must be also removed to avoid double inclusion (-ev1.dts
+includes ed1.dts which includes stm32mp15-scmi.dtsi).
+Also remove *-scmi compatible from documentation.
+
+Change-Id: I6651606a2a2462ed8a0140502f2fd14f6c5a22f3
+Signed-off-by: Amelie Delaunay <amelie.delaunay@foss.st.com>
+---
+ Documentation/devicetree/bindings/arm/stm32/stm32.yaml   | 8 --------
+ arch/arm/boot/dts/Makefile                               | 4 ----
+ ...tm32mp157a-dk1-scmi.dts => stm32mp157a-dk1-scmi.dtsi} | 6 ------
+ ...tm32mp157c-dk2-scmi.dts => stm32mp157c-dk2-scmi.dtsi} | 6 ------
+ ...tm32mp157c-ed1-scmi.dts => stm32mp157c-ed1-scmi.dtsi} | 6 ------
+ ...tm32mp157c-ev1-scmi.dts => stm32mp157c-ev1-scmi.dtsi} | 9 ---------
+ 6 files changed, 39 deletions(-)
+ rename arch/arm/boot/dts/{stm32mp157a-dk1-scmi.dts => stm32mp157a-dk1-scmi.dtsi} (87%)
+ rename arch/arm/boot/dts/{stm32mp157c-dk2-scmi.dts => stm32mp157c-dk2-scmi.dtsi} (88%)
+ rename arch/arm/boot/dts/{stm32mp157c-ed1-scmi.dts => stm32mp157c-ed1-scmi.dtsi} (88%)
+ rename arch/arm/boot/dts/{stm32mp157c-ev1-scmi.dts => stm32mp157c-ev1-scmi.dtsi} (84%)
+
+diff --git a/Documentation/devicetree/bindings/arm/stm32/stm32.yaml b/Documentation/devicetree/bindings/arm/stm32/stm32.yaml
+index 4c605bccc474..7706c7952886 100644
+--- a/Documentation/devicetree/bindings/arm/stm32/stm32.yaml
++++ b/Documentation/devicetree/bindings/arm/stm32/stm32.yaml
+@@ -81,26 +81,18 @@ properties:
+           - const: st,stm32mp157
+ 
+       - items:
+-          - const: st,stm32mp157a-dk1-scmi
+           - const: st,stm32mp157a-dk1
+           - const: st,stm32mp157
+       - items:
+-          - const: st,stm32mp157c-dk2-scmi
+           - const: st,stm32mp157c-dk2
+           - const: st,stm32mp157
+       - items:
+-          - const: st,stm32mp157c-ed1-scmi
+           - const: st,stm32mp157c-ed1
+           - const: st,stm32mp157
+       - items:
+           - const: st,stm32mp157c-ev1
+           - const: st,stm32mp157c-ed1
+           - const: st,stm32mp157
+-      - items:
+-          - const: st,stm32mp157c-ev1-scmi
+-          - const: st,stm32mp157c-ev1
+-          - const: st,stm32mp157c-ed1
+-          - const: st,stm32mp157
+ 
+       - description: DH STM32MP1 SoM based Boards
+         items:
+diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
+index 6aa7dc4db2fc..b403deb45eb7 100644
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -1219,7 +1219,6 @@ dtb-$(CONFIG_ARCH_STM32) += \
+ 	stm32mp157a-avenger96.dtb \
+ 	stm32mp157a-dhcor-avenger96.dtb \
+ 	stm32mp157a-dk1.dtb \
+-	stm32mp157a-dk1-scmi.dtb \
+ 	stm32mp157a-iot-box.dtb \
+ 	stm32mp157a-microgea-stm32mp1-microdev2.0.dtb \
+ 	stm32mp157a-microgea-stm32mp1-microdev2.0-of7.dtb \
+@@ -1230,12 +1229,9 @@ dtb-$(CONFIG_ARCH_STM32) += \
+ 	stm32mp157c-dhcom-pdk2.dtb \
+ 	stm32mp157c-dhcom-picoitx.dtb \
+ 	stm32mp157c-dk2.dtb \
+-	stm32mp157c-dk2-scmi.dtb \
+ 	stm32mp157c-ed1.dtb \
+-	stm32mp157c-ed1-scmi.dtb \
+ 	stm32mp157c-emsbc-argon.dtb \
+ 	stm32mp157c-ev1.dtb \
+-	stm32mp157c-ev1-scmi.dtb \
+ 	stm32mp157c-lxa-mc1.dtb \
+ 	stm32mp157c-odyssey.dtb
+ dtb-$(CONFIG_MACH_SUN4I) += \
+diff --git a/arch/arm/boot/dts/stm32mp157a-dk1-scmi.dts b/arch/arm/boot/dts/stm32mp157a-dk1-scmi.dtsi
+similarity index 87%
+rename from arch/arm/boot/dts/stm32mp157a-dk1-scmi.dts
+rename to arch/arm/boot/dts/stm32mp157a-dk1-scmi.dtsi
+index e539cc80bef8..673b736cc67b 100644
+--- a/arch/arm/boot/dts/stm32mp157a-dk1-scmi.dts
++++ b/arch/arm/boot/dts/stm32mp157a-dk1-scmi.dtsi
+@@ -4,15 +4,9 @@
+  * Author: Alexandre Torgue <alexandre.torgue@foss.st.com> for STMicroelectronics.
+  */
+ 
+-/dts-v1/;
+-
+-#include "stm32mp157a-dk1.dts"
+ #include "stm32mp15-scmi.dtsi"
+ 
+ / {
+-	model = "STMicroelectronics STM32MP157A-DK1 SCMI Discovery Board";
+-	compatible = "st,stm32mp157a-dk1-scmi", "st,stm32mp157a-dk1", "st,stm32mp157";
+-
+ 	reserved-memory {
+ 		optee@de000000 {
+ 			reg = <0xde000000 0x2000000>;
+diff --git a/arch/arm/boot/dts/stm32mp157c-dk2-scmi.dts b/arch/arm/boot/dts/stm32mp157c-dk2-scmi.dtsi
+similarity index 88%
+rename from arch/arm/boot/dts/stm32mp157c-dk2-scmi.dts
+rename to arch/arm/boot/dts/stm32mp157c-dk2-scmi.dtsi
+index 97e4f94b0a24..6069c5067114 100644
+--- a/arch/arm/boot/dts/stm32mp157c-dk2-scmi.dts
++++ b/arch/arm/boot/dts/stm32mp157c-dk2-scmi.dtsi
+@@ -4,15 +4,9 @@
+  * Author: Alexandre Torgue <alexandre.torgue@foss.st.com> for STMicroelectronics.
+  */
+ 
+-/dts-v1/;
+-
+-#include "stm32mp157c-dk2.dts"
+ #include "stm32mp15-scmi.dtsi"
+ 
+ / {
+-	model = "STMicroelectronics STM32MP157C-DK2 SCMI Discovery Board";
+-	compatible = "st,stm32mp157c-dk2-scmi", "st,stm32mp157c-dk2", "st,stm32mp157";
+-
+ 	reserved-memory {
+ 		optee@de000000 {
+ 			reg = <0xde000000 0x2000000>;
+diff --git a/arch/arm/boot/dts/stm32mp157c-ed1-scmi.dts b/arch/arm/boot/dts/stm32mp157c-ed1-scmi.dtsi
+similarity index 88%
+rename from arch/arm/boot/dts/stm32mp157c-ed1-scmi.dts
+rename to arch/arm/boot/dts/stm32mp157c-ed1-scmi.dtsi
+index 9cf0a44d2f47..44c817bdf928 100644
+--- a/arch/arm/boot/dts/stm32mp157c-ed1-scmi.dts
++++ b/arch/arm/boot/dts/stm32mp157c-ed1-scmi.dtsi
+@@ -4,15 +4,9 @@
+  * Author: Alexandre Torgue <alexandre.torgue@foss.st.com> for STMicroelectronics.
+  */
+ 
+-/dts-v1/;
+-
+-#include "stm32mp157c-ed1.dts"
+ #include "stm32mp15-scmi.dtsi"
+ 
+ / {
+-	model = "STMicroelectronics STM32MP157C-ED1 SCMI eval daughter";
+-	compatible = "st,stm32mp157c-ed1-scmi", "st,stm32mp157c-ed1", "st,stm32mp157";
+-
+ 	reserved-memory {
+ 		optee@fe000000 {
+ 			reg = <0xfe000000 0x2000000>;
+diff --git a/arch/arm/boot/dts/stm32mp157c-ev1-scmi.dts b/arch/arm/boot/dts/stm32mp157c-ev1-scmi.dtsi
+similarity index 84%
+rename from arch/arm/boot/dts/stm32mp157c-ev1-scmi.dts
+rename to arch/arm/boot/dts/stm32mp157c-ev1-scmi.dtsi
+index 3b9dd6f4ccc9..6cd714b9f4fc 100644
+--- a/arch/arm/boot/dts/stm32mp157c-ev1-scmi.dts
++++ b/arch/arm/boot/dts/stm32mp157c-ev1-scmi.dtsi
+@@ -4,16 +4,7 @@
+  * Author: Alexandre Torgue <alexandre.torgue@foss.st.com> for STMicroelectronics.
+  */
+ 
+-/dts-v1/;
+-
+-#include "stm32mp157c-ev1.dts"
+-#include "stm32mp15-scmi.dtsi"
+-
+ / {
+-	model = "STMicroelectronics STM32MP157C-EV1 SCMI eval daughter on eval mother";
+-	compatible = "st,stm32mp157c-ev1-scmi", "st,stm32mp157c-ev1", "st,stm32mp157c-ed1",
+-		     "st,stm32mp157";
+-
+ 	reserved-memory {
+ 		optee@fe000000 {
+ 			reg = <0xfe000000 0x2000000>;
+-- 
+2.39.2
+

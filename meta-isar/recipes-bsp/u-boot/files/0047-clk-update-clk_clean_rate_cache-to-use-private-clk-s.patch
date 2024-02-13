@@ -1,0 +1,76 @@
+From 58b74e6f424c1aa2a4d69c1ef970df0cd70e7f47 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Mon, 20 Jun 2022 15:37:25 +0200
+Subject: [PATCH 047/117] clk: update clk_clean_rate_cache to use private clk
+ struct
+
+In clk_clean_rate_cache, clk->rate should update the private clock
+struct, in particular when CCF is activated, to save the cached
+rate value.
+
+When clk_get_parent_rate is called, the cached information
+is read from pclk->rate, with pclk = clk_get_parent(clk).
+
+As the cached is read from private clk data, the update should
+be done also on it.
+
+[Backport of commit 19fb40a5e7ee ("clk: update clk_clean_rate_cache to use private clk struct")]
+
+Fixes: 6b7fd3128f7 ("clk: fix set_rate to clean up cached rates for the hierarchy")
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Reviewed-by: Sean Anderson <seanga2@gmail.com>
+Link: https://lore.kernel.org/r/20220620153717.v2.1.Ifa06360115ffa3f3307372e6cdd98ec16759d6ba@changeid
+Link: https://lore.kernel.org/r/20220712142352.RESEND.v2.1.Ifa06360115ffa3f3307372e6cdd98ec16759d6ba@changeid/
+Change-Id: I9a3ec7a657b7f484546c4478c3725f82bc213d1f
+---
+ drivers/clk/clk-uclass.c | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/clk/clk-uclass.c b/drivers/clk/clk-uclass.c
+index b89c77bf79..5cfa022a6d 100644
+--- a/drivers/clk/clk-uclass.c
++++ b/drivers/clk/clk-uclass.c
+@@ -544,6 +544,19 @@ ulong clk_round_rate(struct clk *clk, ulong rate)
+ 	return ops->round_rate(clk, rate);
+ }
+ 
++static void clk_get_priv(struct clk *clk, struct clk **clkp)
++{
++	*clkp = clk;
++
++	/* get private clock struct associated to the provided clock */
++	if (CONFIG_IS_ENABLED(CLK_CCF)) {
++		/* Take id 0 as a non-valid clk, such as dummy */
++		if (clk->id)
++			clk_get_by_id(clk->id, clkp);
++	}
++}
++
++/* clean cache, called with private clock struct */
+ static void clk_clean_rate_cache(struct clk *clk)
+ {
+ 	struct udevice *child_dev;
+@@ -563,6 +576,7 @@ static void clk_clean_rate_cache(struct clk *clk)
+ ulong clk_set_rate(struct clk *clk, ulong rate)
+ {
+ 	const struct clk_ops *ops;
++	struct clk *clkp;
+ 
+ 	debug("%s(clk=%p, rate=%lu)\n", __func__, clk, rate);
+ 	if (!clk_valid(clk))
+@@ -572,8 +586,10 @@ ulong clk_set_rate(struct clk *clk, ulong rate)
+ 	if (!ops->set_rate)
+ 		return -ENOSYS;
+ 
++	/* get private clock struct used for cache */
++	clk_get_priv(clk, &clkp);
+ 	/* Clean up cached rates for us and all child clocks */
+-	clk_clean_rate_cache(clk);
++	clk_clean_rate_cache(clkp);
+ 
+ 	return ops->set_rate(clk, rate);
+ }
+-- 
+2.39.2
+

@@ -1,0 +1,48 @@
+From 45e61606aa3f589b08761eb5730a46c52f522154 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marex@denx.de>
+Date: Tue, 6 Dec 2022 03:35:14 +0100
+Subject: [PATCH 058/117] ARM: stm32: Increment boot counter in SPL on DHSOM
+
+Increment the boot counter already in U-Boot SPL instead of incrementing
+it only later in U-Boot proper. This can be used by SPL to boot either of
+two U-Boot copies and improve redundancy of software on the platform, e.g.
+in case of full A/B update strategy.
+
+[Backport of commit 1ca617f5fd5b ("ARM: stm32: Increment boot counter in SPL on DHSOM")]
+
+Signed-off-by: Marek Vasut <marex@denx.de>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Reviewed-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Change-Id: I9f0b2b6188b903e5dd4577141437863e12a88da4
+---
+ configs/stm32mp15_dhcom_basic_defconfig | 1 +
+ configs/stm32mp15_dhcor_basic_defconfig | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/configs/stm32mp15_dhcom_basic_defconfig b/configs/stm32mp15_dhcom_basic_defconfig
+index f0415615b2..c7816060e4 100644
+--- a/configs/stm32mp15_dhcom_basic_defconfig
++++ b/configs/stm32mp15_dhcom_basic_defconfig
+@@ -36,6 +36,7 @@ CONFIG_CONSOLE_MUX=y
+ CONFIG_BOARD_EARLY_INIT_F=y
+ CONFIG_SPL_FOOTPRINT_LIMIT=y
+ CONFIG_SPL_MAX_FOOTPRINT=0x3db00
++CONFIG_SPL_BOOTCOUNT_LIMIT=y
+ CONFIG_SPL_LEGACY_IMAGE_FORMAT=y
+ # CONFIG_SPL_SHARES_INIT_SP_ADDR is not set
+ CONFIG_SPL_STACK=0x30000000
+diff --git a/configs/stm32mp15_dhcor_basic_defconfig b/configs/stm32mp15_dhcor_basic_defconfig
+index 6bcc3e5edb..1ebdc789de 100644
+--- a/configs/stm32mp15_dhcor_basic_defconfig
++++ b/configs/stm32mp15_dhcor_basic_defconfig
+@@ -34,6 +34,7 @@ CONFIG_CONSOLE_MUX=y
+ CONFIG_BOARD_EARLY_INIT_F=y
+ CONFIG_SPL_FOOTPRINT_LIMIT=y
+ CONFIG_SPL_MAX_FOOTPRINT=0x3db00
++CONFIG_SPL_BOOTCOUNT_LIMIT=y
+ CONFIG_SPL_LEGACY_IMAGE_FORMAT=y
+ # CONFIG_SPL_SHARES_INIT_SP_ADDR is not set
+ CONFIG_SPL_STACK=0x30000000
+-- 
+2.39.2
+

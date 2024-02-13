@@ -1,0 +1,57 @@
+From b8fc5bcaa0b50bfc7b0f6141133a5cd6a4627be2 Mon Sep 17 00:00:00 2001
+From: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Date: Tue, 20 Sep 2022 13:39:56 +0200
+Subject: [PATCH 062/117] phy: usbphyc: use regulator_set_enable_if_allowed for
+ disabling vbus supply
+
+Use regulator_set_enable_if_allowed() api instead of regulator_set_enable()
+while disabling vbus supply. This way the driver doesn't see an error
+when it disable an always-on regulator for VBUS.
+
+This patch is needed for STM32MP157C-DK2 board when the regulator
+v3v3: buck4 used as the phy vbus supply in kernel device tree
+is always on with the next hack for low power use-case:
+
+&usbphyc_port0 {
+        ...
+	/*
+	 * Hack to keep hub active until all connected devices are suspended
+	 * otherwise the hub will be powered off as soon as the v3v3 is disabled
+	 * and it can disturb connected devices.
+	 */
+	connector {
+		compatible = "usb-a-connector";
+		vbus-supply = <&v3v3>;
+	};
+};
+
+Without this patch and the previous update in DT the command
+"usb stop" failed and the next command "usb start" cause a crash.
+
+[Backport of commit 91dae6d0a19e ("phy: usbphyc: use
+ regulator_set_enable_if_allowed for disabling vbus supply")]
+
+Signed-off-by: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Reviewed-by: Marek Vasut <marex@denx.de>
+Change-Id: Ic7a85fbb77c69f2e1f8df5a8ae0c776bec7ce122
+---
+ drivers/phy/phy-stm32-usbphyc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/phy/phy-stm32-usbphyc.c b/drivers/phy/phy-stm32-usbphyc.c
+index 9f0b7d7118..dcf2194e9a 100644
+--- a/drivers/phy/phy-stm32-usbphyc.c
++++ b/drivers/phy/phy-stm32-usbphyc.c
+@@ -375,7 +375,7 @@ static int stm32_usbphyc_phy_power_off(struct phy *phy)
+ 		return 0;
+ 
+ 	if (usbphyc_phy->vbus) {
+-		ret = regulator_set_enable(usbphyc_phy->vbus, false);
++		ret = regulator_set_enable_if_allowed(usbphyc_phy->vbus, false);
+ 		if (ret)
+ 			return ret;
+ 	}
+-- 
+2.39.2
+

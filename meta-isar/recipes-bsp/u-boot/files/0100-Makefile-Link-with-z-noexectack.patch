@@ -1,0 +1,40 @@
+From f98e77afbb6ef1a5999ce6859a264f85f8d595a4 Mon Sep 17 00:00:00 2001
+From: Tom Rini <trini@konsulko.com>
+Date: Tue, 14 Feb 2023 15:09:31 -0500
+Subject: [PATCH 100/117] Makefile: Link with -z noexectack
+
+When moving to gcc-12.2 we started trying to quiet some of the new
+linker warnings, that are not relevant to us. However, a
+misunderstanding of the mechanics at play meant that I intentionally
+omitted passing -z noexecstack to the linker, when we do need to. Add
+this flag and in turn remove warnings from the linker.
+
+[Backport of commit 57450d8661b3 ("Makefile: Link with -z noexectack")]
+
+Fixes: 1e1c51f8ace8 ("Makefile: link with --no-warn-rwx-segments")
+Signed-off-by: Tom Rini <trini@konsulko.com>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+Change-Id: I6c571ca8fed7efb30d2c419d69439ccb6760f128
+Reviewed-on: https://gerrit.st.com/c/mpu/oe/st/u-boot/+/293260
+Tested-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+Domain-Review: Patrick DELAUNAY <patrick.delaunay@foss.st.com>
+---
+ Makefile | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Makefile b/Makefile
+index ba2166e31d..d5eb956e77 100644
+--- a/Makefile
++++ b/Makefile
+@@ -799,6 +799,7 @@ KBUILD_CPPFLAGS += $(KCPPFLAGS)
+ KBUILD_AFLAGS += $(KAFLAGS)
+ KBUILD_CFLAGS += $(KCFLAGS)
+ 
++KBUILD_LDFLAGS  += -z noexecstack
+ KBUILD_LDFLAGS  += $(call ld-option,--no-warn-rwx-segments)
+ 
+ KBUILD_HOSTCFLAGS += $(if $(CONFIG_TOOLS_DEBUG),-g)
+-- 
+2.39.2
+

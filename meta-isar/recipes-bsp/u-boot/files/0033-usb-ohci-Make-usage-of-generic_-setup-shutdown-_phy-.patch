@@ -1,0 +1,110 @@
+From 3fa184a0cc767f7ea1f40f773fa641cefb93f6a2 Mon Sep 17 00:00:00 2001
+From: Patrice Chotard <patrice.chotard@foss.st.com>
+Date: Tue, 6 Sep 2022 08:15:27 +0200
+Subject: [PATCH 033/117] usb: ohci: Make usage of
+ generic_{setup,shutdown}_phy() helpers
+
+Replace ohci_setup_phy() and ohci_shutdown_phy () by respectively
+generic_setup_phy() and generic_shutdown_phy().
+
+[Backport of commit 10005004db73 ("usb: ohci: Make usage of generic_{setup,shutdown}_phy() helpers")]
+
+Signed-off-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Cc: Marek Vasut <marex@denx.de>
+Cc: Simon Glass <sjg@chromium.org>
+Change-Id: I08deb1b7abd270de0eb78ce4c94b551d52238ca9
+---
+ drivers/usb/host/ohci-generic.c | 56 ++-------------------------------
+ 1 file changed, 3 insertions(+), 53 deletions(-)
+
+diff --git a/drivers/usb/host/ohci-generic.c b/drivers/usb/host/ohci-generic.c
+index 5d23058aaf..2d8d38ce9a 100644
+--- a/drivers/usb/host/ohci-generic.c
++++ b/drivers/usb/host/ohci-generic.c
+@@ -23,56 +23,6 @@ struct generic_ohci {
+ 	int reset_count;	/* number of reset in reset list */
+ };
+ 
+-static int ohci_setup_phy(struct udevice *dev, int index)
+-{
+-	struct generic_ohci *priv = dev_get_priv(dev);
+-	int ret;
+-
+-	ret = generic_phy_get_by_index(dev, index, &priv->phy);
+-	if (ret) {
+-		if (ret != -ENOENT) {
+-			dev_err(dev, "failed to get usb phy\n");
+-			return ret;
+-		}
+-	} else {
+-		ret = generic_phy_init(&priv->phy);
+-		if (ret) {
+-			dev_dbg(dev, "failed to init usb phy\n");
+-			return ret;
+-		}
+-
+-		ret = generic_phy_power_on(&priv->phy);
+-		if (ret) {
+-			dev_dbg(dev, "failed to power on usb phy\n");
+-			return generic_phy_exit(&priv->phy);
+-		}
+-	}
+-
+-	return 0;
+-}
+-
+-static int ohci_shutdown_phy(struct udevice *dev)
+-{
+-	struct generic_ohci *priv = dev_get_priv(dev);
+-	int ret = 0;
+-
+-	if (generic_phy_valid(&priv->phy)) {
+-		ret = generic_phy_power_off(&priv->phy);
+-		if (ret) {
+-			dev_dbg(dev, "failed to power off usb phy\n");
+-			return ret;
+-		}
+-
+-		ret = generic_phy_exit(&priv->phy);
+-		if (ret) {
+-			dev_dbg(dev, "failed to power off usb phy\n");
+-			return ret;
+-		}
+-	}
+-
+-	return 0;
+-}
+-
+ static int ohci_usb_probe(struct udevice *dev)
+ {
+ 	struct ohci_regs *regs = dev_read_addr_ptr(dev);
+@@ -135,7 +85,7 @@ static int ohci_usb_probe(struct udevice *dev)
+ 		goto clk_err;
+ 	}
+ 
+-	err = ohci_setup_phy(dev, 0);
++	err = generic_setup_phy(dev, &priv->phy, 0);
+ 	if (err)
+ 		goto reset_err;
+ 
+@@ -146,7 +96,7 @@ static int ohci_usb_probe(struct udevice *dev)
+ 	return 0;
+ 
+ phy_err:
+-	ret = ohci_shutdown_phy(dev);
++	ret = generic_shutdown_phy(&priv->phy);
+ 	if (ret)
+ 		dev_err(dev, "failed to shutdown usb phy\n");
+ 
+@@ -171,7 +121,7 @@ static int ohci_usb_remove(struct udevice *dev)
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = ohci_shutdown_phy(dev);
++	ret = generic_shutdown_phy(&priv->phy);
+ 	if (ret)
+ 		return ret;
+ 
+-- 
+2.39.2
+

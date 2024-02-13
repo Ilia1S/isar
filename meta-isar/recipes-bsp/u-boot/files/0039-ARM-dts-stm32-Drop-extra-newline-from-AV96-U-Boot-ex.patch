@@ -1,0 +1,34 @@
+From 7226d4d69ecfa4175b1d25a258b5ff0b536bc5ae Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marex@denx.de>
+Date: Mon, 26 Sep 2022 18:46:31 +0200
+Subject: [PATCH 039/117] ARM: dts: stm32: Drop extra newline from AV96 U-Boot
+ extras DT
+
+Remove duplicate newline, no functional change.
+
+[Backport of commit f8edb1e79c7b ("ARM: dts: stm32: Drop extra newline from AV96 U-Boot extras DT")]
+
+Signed-off-by: Marek Vasut <marex@denx.de>
+Cc: Patrice Chotard <patrice.chotard@foss.st.com>
+Cc: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Reviewed-by: Patrice Chotard <patrice.chotard@foss.st.com>
+Change-Id: I130530f4b7b1013bade5390f2af43e7204a66a19
+---
+ arch/arm/dts/stm32mp15xx-dhcor-avenger96-u-boot.dtsi | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/arch/arm/dts/stm32mp15xx-dhcor-avenger96-u-boot.dtsi b/arch/arm/dts/stm32mp15xx-dhcor-avenger96-u-boot.dtsi
+index b6fceb9ad5..6dee51dc1c 100644
+--- a/arch/arm/dts/stm32mp15xx-dhcor-avenger96-u-boot.dtsi
++++ b/arch/arm/dts/stm32mp15xx-dhcor-avenger96-u-boot.dtsi
+@@ -19,7 +19,6 @@
+ 	};
+ };
+ 
+-
+ &ethernet0 {
+ 	phy-reset-gpios = <&gpioz 2 GPIO_ACTIVE_LOW>;
+ 
+-- 
+2.39.2
+
