@@ -8,7 +8,8 @@ require recipes-bsp/trusted-firmware-a/trusted-firmware-a-custom.inc
 
 SRC_URI += "https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git/snapshot/trusted-firmware-a-${PV}.tar.gz \
     file://0001-feat-stm32mp15-fdts-add-stm32mp157d-dk1-board.patch \
-    file://0001-feat-stm32mp15-fdts-fulfill-diversity-for-STM32M15x-.patch"
+    file://0001-feat-stm32mp15-fdts-fulfill-diversity-for-STM32M15x-.patch \
+    file://0001-feat-build-add-support-for-new-binutils-versions.patch"
 SRC_URI[sha256sum] = "df4e0f3803479df0ea4cbf3330b59731bc2efc2112c951f9adb3685229163af9"
 
 S = "${WORKDIR}/trusted-firmware-a-${PV}"

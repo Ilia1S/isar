@@ -96,7 +96,7 @@ config MACHINE_STARFIVE_VISIONFIVE2
 
 config MACHINE_STM32MP15X
 	bool "stm32mp15x"
-	depends on DEBIAN_BULLSEYE
+	depends on DEBIAN_BULLSEYE || DEBIAN_BOOKWORM
 
 config MACHINE_VIRTUALBOX
 	bool "virtualbox"

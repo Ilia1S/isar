@@ -199,6 +199,7 @@ class NoCrossTest(CIBaseTest):
             'mc:nanopi-neo-bullseye:isar-image-base',
             'mc:nanopi-neo-bookworm:isar-image-base',
             'mc:stm32mp15x-bullseye:isar-image-base',
+            'mc:stm32mp15x-bookworm:isar-image-base',
             'mc:qemuamd64-focal:isar-image-ci',
             'mc:qemuamd64-bookworm:isar-image-ci',
             'mc:qemuarm-bookworm:isar-image-ci',
