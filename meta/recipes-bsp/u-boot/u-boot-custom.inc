@@ -1,7 +1,8 @@
 # Custom U-Boot build
 #
-# This software is a part of ISAR.
+# This software is a part of Isar.
 # Copyright (c) Siemens AG, 2018
+# Copyright (c) 2024 ilbers GmbH
 #
 # SPDX-License-Identifier: MIT
 
@@ -27,7 +28,9 @@ python() {
 DEBIAN_BUILD_DEPENDS ?= "bc, bison, flex, device-tree-compiler, git"
 
 TEMPLATE_FILES = "debian/control.tmpl debian/rules.tmpl"
-TEMPLATE_VARS += "MACHINE DEBIAN_BUILD_DEPENDS U_BOOT_CONFIG U_BOOT_BIN"
+TEMPLATE_VARS += "MACHINE DEBIAN_BUILD_DEPENDS U_BOOT_CONFIG U_BOOT_BIN U_BOOT_EXTRA_BUILDARGS"
+
+U_BOOT_EXTRA_BUILDARGS ??= ""
 
 U_BOOT_TOOLS_PACKAGE ?= "0"
 U_BOOT_CONFIG_PACKAGE ?= "0"
