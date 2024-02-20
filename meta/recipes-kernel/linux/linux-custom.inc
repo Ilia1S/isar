@@ -1,8 +1,9 @@
 # Custom kernel build
 #
-# This software is a part of ISAR.
+# This software is a part of Isar.
 # Copyright (c) Siemens AG, 2022
 # Copyright (c) Mentor Graphics, a Siemens business, 2022
+# Copyright (c) 2024 ilbers GmbH
 #
 # SPDX-License-Identifier: MIT
 
@@ -82,6 +83,7 @@ TEMPLATE_VARS += "                \
     KCFLAGS                       \
     KAFLAGS                       \
     DISTRIBUTOR                   \
+    KERNEL_EXTRA_BUILDARGS        \
 "
 
 inherit dpkg
@@ -90,6 +92,9 @@ inherit template
 # Add custom cflags to the kernel build
 KCFLAGS ?= "-fdebug-prefix-map=${CURDIR}=."
 KAFLAGS ?= "-fdebug-prefix-map=${CURDIR}=."
+
+# Add extra arguments to the kernel build
+KERNEL_EXTRA_BUILDARGS ??= ""
 
 # Derive name of the kernel packages from the name of this recipe
 KERNEL_NAME_PROVIDED ?= "${@ d.getVar('PN').partition('linux-')[2]}"
