@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # Helper script to start QEMU with Isar image
-# Copyright (c) 2019-2024, ilbers GmbH
+# Copyright (c) 2019-2014, ilbers GmbH
 
 import os
 import socket
@@ -32,7 +32,8 @@ def format_qemu_cmdline(arch, build, distro, image, out, pid,
     deploy_dir_image = get_bitbake_var(bb_output, 'DEPLOY_DIR_IMAGE')
     base = 'ubuntu' if distro in ['jammy', 'focal'] else 'debian'
 
-    rootfs_image = image + '-' + base + '-' + distro + '-qemu' + arch + '.' + image_type
+    rootfs_image = \
+        image + '-' + base + '-' + distro + '-qemu' + machine + arch + '.' + image_type
 
     if image_type == 'ext4':
         kernel_image = deploy_dir_image + '/' + get_bitbake_var(bb_output, 'KERNEL_IMAGE')

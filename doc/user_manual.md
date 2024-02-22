@@ -1,6 +1,6 @@
 # ISAR User Manual
 
-Copyright (C) 2016-2019, ilbers GmbH
+Copyright (C) 2016-2024, ilbers GmbH
 
 ## Contents
 
@@ -1053,7 +1053,7 @@ bitbake mc:qemuamd64-sb-bullseye:isar-image-base
 **Start the image:** (consider adding `-enable-kvm` to get some decent performance):
 
 ```bash
-start_vm -a amd64-sb -d bullseye -s
+start_vm -a amd64 -d bullseye -s
 ```
 
 **Check if SB is actually enabled (detected):**
