@@ -1,18 +1,32 @@
 # Install Avocado
 
-The framework could be installed by using standard HOWTO:
-
-  https://github.com/avocado-framework/avocado#installing-with-standard-python-tools
-
-## For Debian (tested on Debian 11.x)
+## For Debian (tested on Debian 11 and 12)
 
 ```
-$ sudo apt-get update -qq
-$ sudo apt-get install -y virtualenv
-$ rm -rf /tmp/avocado_venv
-$ virtualenv --python python3 /tmp/avocado_venv
-$ source /tmp/avocado_venv/bin/activate
-$ pip install avocado-framework==100.1
+$ git clone https://github.com/siemens/kas
+$ cat > kas.yml <<EOF
+> header:
+>   version: 12
+>   build_system: isar
+> repos:
+>   isar:
+>   url: "http://github.com:/ilbers/isar"
+>   refspec: master
+>   layers:
+>     meta:
+>     meta-isar:
+$ EOF
+$ kas/kas-container shell kas.yml
+
+In the kas shell:
+
+$ wget -q http://deb.isar-build.org/debian-isar.key -O- |gpg --dearmor \
+>   |sudo dd of=/etc/apt/trusted.gpg.d/debian-isar.gpg
+$ echo "deb [signed-by=/etc/apt/trusted.gpg.d/debian-isar.gpg] \
+>   http://deb.isar-build.org/debian-isar bookworm-isar main" \
+>   |sudo /etc/apt/sources.list.d/10-isar_build.list
+$ sudo apt-get update
+$ sudo apt-get install avocado
 ```
 
 # Run test
