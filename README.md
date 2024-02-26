@@ -21,14 +21,13 @@ To test the QEMU image, run the following command:
 
         $ start_vm -a <arch of your build> -d <distro of your build>
 
-Ex: Architecture of your build could be arm,arm64,i386,amd64,etc.
-    Distribution of your build could be buster,bullseye,bookworm,etc.
+Ex: Architecture of your build could be arm, arm64, i386, amd64, etc.
+    Distribution of your build could be buster, bullseye, bookworm, etc.
 
 The default root password is 'root'.
 
-To test the RPi board, flash the image to an SD card using the instructions from the official site,
-section "WRITING AN IMAGE TO THE SD CARD":
- https://www.raspberrypi.org/documentation/installation/installing-images/README.md
+To test your RPi board, flash the image onto an SD card using the instructions from the official site:
+https://www.raspberrypi.com/documentation/computers/getting-started.html#install-an-operating-system
 
 # Supported distributions
 
