@@ -1,0 +1,11 @@
+---
+username: turar-ci
+ssh_key_path: >-
+    /home/<username>/.ssh/id_rsa
+host: 192.168..
+ssh_port: 22
+tty:
+switch_number: ''
+switch_port:
+serial_number: ''
+sd_device_path: '/dev/sdb'

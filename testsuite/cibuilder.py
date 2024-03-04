@@ -667,6 +667,27 @@ BBPATH .= ":${LAYERDIR}"\
 
         return config
 
+    def get_config_sd(self, yaml_name, machine, distro):
+        with open(yaml_name, 'r', encoding='utf-8') as yaml_file:
+            yaml_data = yaml.safe_load(yaml_file)
+        required_keys = [
+            'host', 'tty', 'switch_number', 'switch_port',
+            'serial_number', 'sd_device_path',
+        ]
+        output = subprocess.check_output(['bitbake', '-e',
+                                   f'mc:{machine}-{distro}:isar-image-base'])
+        bb_output = output.decode()
+        images_path = start_vm.get_bitbake_var(bb_output, 'DEPLOY_DIR_IMAGE')
+        image_name = start_vm.get_bitbake_var(bb_output, 'SOURCE_IMAGE_FILE')
+        for key in required_keys:
+            if key not in yaml_data:
+                self.error(f'{key} is required')
+        config = tuple(yaml_data.get(key, None) for key in required_keys +
+            ['ssh_port', 'username', 'ssh_key_path']) + (images_path,
+                                                         image_name)
+
+        return config
+
     def start_rpi_tftp(self, tftp_server, nfs_server, tftp_root_path,
                        nfs_root_path, rpi_host, tty, switch_number,
                        switch_port, serial_number, username,
@@ -691,6 +712,18 @@ BBPATH .= ":${LAYERDIR}"\
         self.boot_board(current_ip, rpi_host, tty, serial_number,
                         switch_number, switch_port, ssh_port_rpi, username,
                         ssh_key_path, distro, machine)
+
+    def start_board_muxer(self, host, tty, switch_number, switch_port,
+                          serial_number, sd_device_path, ssh_port, username,
+                          ssh_key_path, images_path, image_name, machine,
+                          distro):
+        current_ip = socket.gethostbyname(socket.gethostname())
+        self.flash_board(current_ip, host, ssh_port, username,
+                         ssh_key_path, images_path, image_name,
+                         sd_device_path, distro, machine)
+        self.boot_board(current_ip, host, tty, serial_number, switch_number,
+                        switch_port, ssh_port, username, ssh_key_path,
+                        distro, machine)
 
     def configure_firmware_files(self, current_ip, tftp_server,
                                  ssh_port_tftp, username, ssh_key_path,
@@ -831,6 +864,47 @@ BBPATH .= ":${LAYERDIR}"\
             process.run(f'tar -xzf {archive_name}', sudo=True)
             process.run(f'rm -f {nfs_rpi_path}/{archive_name}',
                         sudo=True)
+
+    def flash_board(self, current_ip, host, ssh_port, username,
+                    ssh_key_path, images_path, image_name, sd_device_path,
+                    distro, machine):
+        board_dir = f'/home/{username}/{machine}'
+        if current_ip != host:
+            with ssh.Session(host, ssh_port, username,
+                             ssh_key_path) as session:
+                session.cmd(f'mkdir -p {board_dir}')
+            process.run(
+                f'scp -P {ssh_port} -i {ssh_key_path} {images_path}/'
+                f'{image_name} {username}@{host}:{board_dir}'
+            )
+            with ssh.Session(host, ssh_port, username, ssh_key_path) \
+                as session:
+                session.cmd(
+                    f'cd {board_dir} && '
+                    f'sudo sd-mux-ctrl --device-serial=sd-wire_1 --ts && '
+                    f'bmaptool create {image_name} > '
+                    f'{machine}-{distro}-isar-ci.bmap && sudo '
+                    f'bmaptool copy --bmap {machine}-{distro}-isar-ci.bmap '
+                    f'{image_name} {sd_device_path} && '
+                    f'sudo sd-mux-ctrl --device-serial=sd-wire_1 --dut',
+                    ignore_status=False
+                )
+            session.quit()
+
+        elif current_ip == host:
+            os.makedirs(board_dir, exist_ok=True)
+            shutil.copy(images_path, board_dir)
+            os.chdir(board_dir)
+            process.run(
+                'sd-mux-ctrl --device-serial=sd-wire_1 --ts', sudo=True)
+            process.run(
+                f'bmaptool create {image_name} > '
+                f'{machine}-{distro}-isar-ci.bmap')
+            process.run(
+                f'bmaptool copy --bmap {machine}-{distro}-isar-ci.bmap '
+                f'{image_name} {sd_device_path}', sudo=True)
+            process.run(
+                'sd-mux-ctrl --device-serial=sd-wire_1 --dut', sudo=True)
 
     def save_logs(self, distro, serial_number):
         logdir = f'{self.build_dir}/hw_start'

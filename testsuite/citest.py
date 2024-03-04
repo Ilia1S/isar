@@ -350,6 +350,27 @@ class RpiHWTTest(CIBaseTest):
         self.start_rpi_tftp(*config_values, distro, machine, model)
 
 
+class StmHWMTest(CIBaseTest):
+
+    """
+    stm32mp15x hardware test via SD muxer
+
+    :avocado: tags=stmhw
+    """
+    def test_stm_hw_build(self):
+        self.init()
+        distro = self.params.get('distro', default='bullseye')
+        self.perform_build_test(f'mc:stm32mp15x-{distro}:isar-image-base')
+
+    def test_stm_hw_boot(self):
+        self.init()
+        config_name = self.params.get(
+            'config', default=f'testsuite/yamls/board_data.yaml')
+        distro = self.params.get('distro', default='bullseye')
+        config_values = self.get_config_sd(config_name, 'stm32mp15x', distro)
+        self.start_board_muxer(*config_values, 'stm32mp15x', distro)
+
+
 class SourceTest(CIBaseTest):
 
     """
