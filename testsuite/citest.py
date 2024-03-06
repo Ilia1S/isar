@@ -394,6 +394,27 @@ class StmHWMTest(CIBaseTest):
         self.start_board_muxer(*config_values, 'stm32mp15x', distro)
 
 
+class HikeyHWMTest(CIBaseTest):
+
+    """
+    hikey hardware test via SD muxer
+
+    :avocado: tags=hikeyhw
+    """
+    def test_hikey_hw_build(self):
+        self.init()
+        distro = self.params.get('distro', default='bookworm')
+        self.perform_build_test(f'mc:hikey-{distro}:isar-image-base')
+
+    def test_hikey_hw_boot(self):
+        self.init()
+        config_name = self.params.get(
+            'config', default=f'testsuite/yamls/board_data.yaml')
+        distro = self.params.get('distro', default='bookworm')
+        config_values = self.get_config_sd(config_name, 'hikey', distro)
+        self.start_board_muxer(*config_values, 'hikey', distro)
+
+
 class SourceTest(CIBaseTest):
 
     """
