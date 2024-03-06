@@ -350,6 +350,29 @@ class RpiHWTTest(CIBaseTest):
         self.start_rpi_tftp(*config_values, distro, machine, model)
 
 
+class RpiHWMTest(CIBaseTest):
+    
+    """
+    Raspberry Pi hardware test via SD muxer
+
+    :avocado: tags=rpihw
+    """
+    def test_rpi_hw_build(self):
+        self.init()
+        machine = self.params.get('machine', default='rpi-arm64-v8')
+        distro = self.params.get('distro', default='bookworm')
+        self.perform_build_test(f'mc:{machine}-{distro}:isar-image-base')
+
+    def test_rpi_hw_boot(self):
+        self.init()
+        config_name = self.params.get(
+            'config', default=f'testsuite/yamls/board_data.yaml')
+        machine = self.params.get('machine', default='rpi-arm64-v8')
+        distro = self.params.get('distro', default='bookworm')
+        config_values = self.get_config_sd(config_name, machine, distro)
+        self.start_board_muxer(*config_values, machine, distro)
+
+
 class StmHWMTest(CIBaseTest):
 
     """
