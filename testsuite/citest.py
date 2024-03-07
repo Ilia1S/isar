@@ -436,6 +436,27 @@ class BananaHWMTest(CIBaseTest):
         self.start_board_muxer(*config_values, 'bananapi', distro)
 
 
+class MiraHWMTest(CIBaseTest):
+
+    """
+    phyboard-mira hardware test via SD muxer
+
+    :avocado: tags=mirahw
+    """
+    def test_mira_hw_build(self):
+        self.init()
+        distro = self.params.get('distro', default='bullseye')
+        self.perform_build_test(f'mc:bananapi-{distro}:isar-image-base')
+
+    def test_mira_hw_boot(self):
+        self.init()
+        config_name = self.params.get(
+            'config', default=f'testsuite/board_data.yaml')
+        distro = self.params.get('distro', default='bullseye')
+        config_values = self.get_config_sd(config_name, 'phyboard-mira', distro)
+        self.start_board_muxer(*config_values, 'phyboard-mira', distro)
+
+
 class SourceTest(CIBaseTest):
 
     """
