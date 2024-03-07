@@ -457,6 +457,27 @@ class MiraHWMTest(CIBaseTest):
         self.start_board_muxer(*config_values, 'phyboard-mira', distro)
 
 
+class De0HWMTest(CIBaseTest):
+
+    """
+    de0-nano-soc hardware test via SD muxer
+
+    :avocado: tags=de0hw
+    """
+    def test_de0_hw_build(self):
+        self.init()
+        distro = self.params.get('distro', default='bookworm')
+        self.perform_build_test(f'mc:de0-nano-soc-{distro}:isar-image-base')
+
+    def test_de0_hw_boot(self):
+        self.init()
+        config_name = self.params.get(
+            'config', default=f'testsuite/yamls/board_data.yaml')
+        distro = self.params.get('distro', default='bookworm')
+        config_values = self.get_config_sd(config_name, 'de0-nano-soc', distro)
+        self.start_board_muxer(*config_values, 'de0-nano-soc', distro)
+
+
 class SourceTest(CIBaseTest):
 
     """
