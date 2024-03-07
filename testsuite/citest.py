@@ -499,6 +499,27 @@ class NanoHWMTest(CIBaseTest):
         self.start_board_muxer(*config_values, 'nanopi-neo', distro)
 
 
+class StarHWMTest(CIBaseTest):
+
+    """
+    starfive-visionfive2 hardware test via SD muxer
+
+    :avocado: tags=starhw
+    """
+    def test_star_hw_build(self):
+        self.init()
+        self.perform_build_test(
+            f'mc:starfive-visionfive2-sid:isar-image-base')
+
+    def test_star_hw_boot(self):
+        self.init()
+        config_name = self.params.get(
+            'config', default=f'testsuite/yamls/board_data.yaml')
+        config_values = self.get_config_sd(config_name,
+                                           'starfive-visionfive2', 'sid')
+        self.start_board_muxer(*config_values, 'starfive-visionfive2', 'sid')
+
+
 class SourceTest(CIBaseTest):
 
     """
