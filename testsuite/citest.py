@@ -415,6 +415,27 @@ class HikeyHWMTest(CIBaseTest):
         self.start_board_muxer(*config_values, 'hikey', distro)
 
 
+class BananaHWMTest(CIBaseTest):
+
+    """
+    bananapi hardware test via SD muxer
+
+    :avocado: tags=bananahw
+    """
+    def test_banana_hw_build(self):
+        self.init()
+        distro = self.params.get('distro', default='bookworm')
+        self.perform_build_test(f'mc:bananapi-{distro}:isar-image-base')
+
+    def test_banana_hw_boot(self):
+        self.init()
+        config_name = self.params.get(
+            'config', default=f'testsuite/yamls/board_data.yaml')
+        distro = self.params.get('distro', default='bookworm')
+        config_values = self.get_config_sd(config_name, 'bananapi', distro)
+        self.start_board_muxer(*config_values, 'bananapi', distro)
+
+
 class SourceTest(CIBaseTest):
 
     """
