@@ -1,0 +1,10 @@
+# This software is a part of Isar.
+# Copyright (C) 2024 ilbers GmbH
+
+part BAREBOX --source rawcopy --sourceparams="file=barebox.bin,skip=1024" --ondisk mmc --no-table --align 1
+
+part --source bootimg-partition --fstype=vfat --label boot --ondisk mmc --active --align 4096 --size 20
+part / --source rootfs --fstype=ext4 --mkfs-extraopts "-I 256" --label root --ondisk mmc --align 1024 --use-uuid
+
+bootloader --timeout=0
+
