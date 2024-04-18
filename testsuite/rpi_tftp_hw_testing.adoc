@@ -1,0 +1,154 @@
+= Raspberry Pi hardware testing via TFTP/NFS
+March 11, 2024
+
+== Prerequisites
+
+- Raspberry Pi 2B v1.2, 3B, 3B+ or 4B with an original power supply.
+Only these models support network boot officially
+- Built and flashed onto an SD card a Linux image for your RPI to enable
+network boot
+- Serial connection between an RPI and a server (this server is called
+<rpi_host> in 'rpi_tftp_data.yaml')
+- Configured Linux DHCP, TFTP and NFS servers
+
+Network connection means wired Ethernet, not wireless. Booting from wireless
+is not supported.
+
+== Enable Network Boot
+
+First, let's configure the serial connection. We use Kermit to connect to the
+serial console:
+
+    vim ~/kerm-rpi
+
+Fill out the open file with the configuration:
+
+	set line /dev/ttyDEV71-rpi4b
+	set speed 115200
+	set carrier-watch off
+	set flow-control none
+	connect
+
+Insert the SD card and power on your RPI:
+
+    sudo clewarecontrol -d 7287 -c 1 -as 1 1
+
+Connect to the RPI via serial connection:
+
+        kermit -y ~/kerm-rpi
+
+Write down the serial number, you will need it later for
+'rpi_tftp_data.yaml':
+
+    grep Serial /proc/cpuinfo | cut -d ' ' -f 2 | cut -c 9-16
+
+Check if network boot is enabled. For 2B v1.2, 3B and 3B+ use the following
+command:
+
+	vcgencmd otp_dump | grep 17:
+
+The value has to be 17:3020000a. If it is yes, then you can power off
+the RPI. If not, you have to add this to '/boot/config.txt', save
+and then power off the RPI:
+
+	program_usb_boot_mode=1
+    ...save the file
+    poweroff
+
+For 4B you need to update the EEPROM configuration:
+
+    raspi-config
+
+Navigate to Advanced Options and then Bootloader Version. Select Latest and
+choose Yes to confirm. Select Finish and confirm you want to reboot. After
+the reboot, open a command prompt again and update your system:
+
+    apt update
+    rpi-eeprom-update
+
+Install update and reboot:
+
+    rpi-eeprom-update -a
+    reboot
+
+After reboot run:
+
+    rpi-eeprom-update
+
+You should see that the CURRENT date has updated to the latest version
+of the bootloader.
+
+Edit the bootloader configuration:
+
+    rpi-eeprom-config --edit
+
+Set:
+
+    BOOT_UART=1
+    BOOT_ORDER=0xF12
+
+Save the file and power off the RPI:
+
+	poweroff
+
+Eject the SD card and power off the switch.
+
+	sudo clewarecontrol -d 7287 -c 1 -as 1 0
+
+== Configure rpi_tftp_data.yaml
+
+Open 'rpi_tftp_data.yaml' and set your settings:
+
+    username - username of your testing user (e.g., 'turar-ci')
+    ssh_port_tftp - ssh port of your tftp server (e.g., 22)
+    tftp_server - ip address of your tftp server (e.g., 192.168.178.37)
+    nfs_server - ip address of your nfs server (e.g., 192.168.178.37)
+    ssh_port_nfs - ssh port of your nfs server (e.g., 22)
+    ssh_key_path - path to the private ssh key (e.g., ~/.ssh/id_rsa)
+    tftp_root_path - tftp root path on the tftp server (e.g., /srv/tftp)
+    nfs_root_path - nfs root path on the nfs server (e.g., /srv/nfs)
+    rpi_host - ip address of the server to which the board is connected to
+    ssh_port_rpi - ssh port of rpi_host
+    tty - path to the serial port on rpi_host (e.g., /dev/ttyDEV71-rpi4b)
+    switch_number - switch number in the clewarecontrol command: \
+        sudo clewarecontrol -d <switch_number> -c 1 -as <swich_port> 0
+    switch_port - switch port in the clewarecontrol command
+    serial_number - serial number of the board
+    rootfs_path - path to rootfs directory (e.g., /home/iskochilov/isar/\
+        build/tmp/work/raspios-bookworm-arm64/isar-image-base-rpi-arm64-v8/\
+        1.0-r0/rootfs/
+
+username, ssh_port(s), ssh_key_path are optional fields and needed when
+your current server (where you run the testsuite), rpi_host, tftp and
+nfs servers are not the same. All other fields are required.
+
+== Run the tests
+
+Create a virtual environment and install the required packages:
+
+    python3 -m venv /tmp/.venv
+    source /tmp/.venv/bin/activate
+    pip install pyyaml
+    pip install paramiko
+    pip install avocado-framework
+
+Run the testsuite:
+
+    avocado run citest.py -t rpitftphw -p machine=<machine> \
+        -p distro=<distro> -p config=<yamlfile>
+
+By default, <machine == rpi-arm64-v8>, <distro> == bookworm, <config> ==
+./yamls/rpi_tftp_data.yaml
+
+Or you can run either only the build or only the boot testcase as:
+
+    avocado run citest.py:RpiHWTTest.test_rpi_hw_build -p machine=<machine> \
+        -p distro=<distro>
+    avocado run citest.py:RpiHWTTest.test_rpi_hw_boot -p machine=<machine> \
+        -p distro=<distro> -p config=<yamlfile>
+
+= External links
+
+https://www.raspberrypi.com/documentation/computers/remote-access.html
+
+https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#boot-sequence

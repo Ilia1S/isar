@@ -1,0 +1,48 @@
+= Boards hardware testing via SD muxer
+March 11, 2024
+
+== Prepare environment
+
+    python3 -m venv /tmp/.venv
+    source /tmp/.venv/bin/activate
+    pip install pyyaml
+    pip install paramiko
+    pip install avocado-framework
+
+== Configure the yaml file
+
+Open 'board_data.yaml' and set your settings:
+
+    username - username of your testing user (e.g., 'turar-ci')
+    ssh_key_path - path to the private ssh key (e.g., ~/.ssh/id_rsa)
+    host - ip address of the server to which the board is connected to
+    ssh_port - ssh port of 'host'
+    tty - path to the serial port on 'host' (e.g., /dev/ttyDEV71-rpi4b)
+    switch_number - switch number in the clewarecontrol command: \
+        sudo clewarecontrol -d <switch_number> -c 1 -as <swich_port> 0
+    switch_port - switch port in the clewarecontrol command
+    serial_number - serial number of the board
+
+The optional fields: username, ssh_port and ssh_key_path - used only
+when your current address (where you run tests) and 'host' are different.
+All other fields are required.
+
+== Run the tests
+
+    avocado run citest.py -t <TS> -p machine=<machine> -p distro=<distro> \
+        -p config=<yamlfile>
+
+<TS> can be: rpihw, stmhw, hikeyhw, bananahw, mirahw, de0hw, nanohw,
+starhw
+<machine> is only used for RPi and can be rpi-arm, rpi-arm-v7, rpi-arm-v7l,
+rpi-arm64-v8
+<distro> can be bullseye or bookworm, some boards support buster
+<config> - path (absolute or relative) to your yaml file, default -
+'testsuite/yamls/board_data.yaml'.
+
+Or you can run either only the build or only the boot testcase as:
+
+    avocado run citest.py:RpiHWMTest.test_rpi_hw_build -p machine=<machine> \
+        -p distro=<distro>
+    avocado run citest.py:RpiHWMTest.test_rpi_hw_boot -p machine=<machine> \
+        -p distro=<distro> -p config=<yamlfile> 
