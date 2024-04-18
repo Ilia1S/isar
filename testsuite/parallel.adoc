@@ -1,0 +1,163 @@
+= Parallel tests execution
+March 15, 2024
+
+Assume that the main server ('canonical_server' in 'server_data.yaml')
+is turar, the additional server is semei.
+Do the following sections on both servers.
+
+== Create a nspawn container (turar and semei)
+
+Create a nspawn container:
+
+    sudo apt-get update
+    sudo apt-get install systemd-container debootstrap
+    sudo debootstrap bookworm <container_path>
+    sudo systemd-nspawn -D <container_path>
+    passwd
+
+Add a user with the same UID and GID as on the host system.
+
+    useradd -u <UID> -g <GID> <username>
+    passwd <username>
+    exit
+
+And enter again with systemd and login as root:
+
+    sudo systemd-nspawn -D <container_path> -b
+
+== Install Isar requirements (turar and semei)
+
+    apt-get update
+    apt-get install vim locales sudo
+    dpkg -P nano
+
+Generate locales:
+
+    sed -i '/en_US.UTF-8 UTF-8/s/^# //g' /etc/locale.gen
+    locale-gen
+    echo LC_ALL=C.UTF-8 > /etc/default/locale
+
+Add your user to 'sudoers':
+
+    visudo
+
+    <username>  ALL=(ALL:ALL) NOPASSWD:ALL
+    Defaults env_keep += "ftp_proxy http_proxy https_proxy no_proxy"
+
+Install required packages:
+
+    su <username>
+
+    sudo apt-get install binfmt-support bzip2 debootstrap dosfstools \
+    dpkg-dev gettext-base git mtools parted python3 quilt qemu-user-static \
+    reprepro sudo unzip xz-utils git-buildpackage pristine-tar sbuild \
+    schroot zstd python3-distutils python3.11-venv umoci skopeo rsync
+
+    sudo gpasswd -a <username> sbuild
+
+    groups
+
+If "groups" command doesn't display "sbuild" in the list then exit and login
+again.
+
+Install QEMU:
+
+    sudo apt-get install qemu-system-x86 qemu-system-arm qemu-system-mips
+
+== Prepare a Python environment and install frameworks (turar and semei)
+
+Create a Python virtual environment:
+
+    python3 -m venv /tmp/avocado_venv
+    source /tmp/avocado_venv/bin/activate
+    
+Install the required tools:
+
+    pip install avocado-framework celery redis pyyaml
+    export PYTHONPATH=$PYTHONPATH:~/isar/bitbake/lib
+    cd ~
+    git clone http://github.com/ilbers/isar.git
+    cd isar/testsuite
+
+== Apply the patch (turar and semei)
+
+Apply the patches:
+
+    git am 0001-Implement parallel tests execution for dev.patch
+    and so on...
+
+== Setup a SSH-connection
+
+Semei. Generate ssh-keys:
+
+    ssh-keygen
+
+Turar. Install and configure a ssh-server:
+
+    sudo apt-get install openssh-server
+
+Open the config file and uncomment the line containing 'Port' and specify
+the desired <port> for your container:
+    
+    sudo vim /etc/ssh/sshd_config
+
+Run your ssh-server:
+
+    sudo service ssh start
+
+Check the status:
+
+    sudo service ssh status
+
+Create an 'authorized_keys' file and copy the content of 'id_rsa.pub'
+of semei to it:
+
+    vim ~/.ssh/authorized_keys
+
+Copy the content of 'id_rsa.pub', write and quit.
+
+    chmod 600 ~/.ssh/authorized_keys
+
+Semei. Make a test connection and add turar to the known hosts:
+
+    ssh turar -p <port>
+    exit
+
+If you are using the passphrase to your keys, run an ssh-agent on the
+terminal session on which celery workers will be run:
+
+    eval $(ssh-agent)
+    ssh-add ~/.ssh/id_rsa
+
+== Run Celery workers and Avocado
+
+In 'testsuite/server_data.yaml' replace all fields with your values.
+
+Open at least two terminal sessions on each server - the first one for
+a celery worker, the second one - for your work.
+
+Check if redis-server is being running on turar:
+
+    ps ax | grep redis-server
+
+If not then run it (you should have a correct redis.conf):
+
+    sudo redis-server /etc/redis/redis.conf --daemonize yes
+
+Run Celery worker on each server:
+
+    celery -A celery_tasks worker --loglevel=INFO --concurrency=1
+
+To run tests in parallel execute on turar:
+
+    avocado run av_celery_test.py -t full --max-parallel-tasks=40
+
+To run tests sequentially, execute on any server:
+
+    avocado run citest.py -t full --max-parallel-tasks=1 -p seq=True
+
+If you want the dependent tests to wait only if the upstream tests have run,
+set 'binded' to True. The default value is False.
+
+    avocado run av_celery_test.py -t full --max-parallel-tasks=40 \
+    -p binded=True
